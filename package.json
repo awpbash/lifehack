@@ -1,28 +1,23 @@
 {
+  "name": "lifehack",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
   "devDependencies": {
     "@types/chrome": "^0.0.326",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.5.2",
     "typescript": "^5.8.3",
-    "vite": "^6.3.5"
-  },
-  "dependencies": {
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0"
-  },
-  "name": "lifehack",
-  "version": "1.0.0",
-  "main": "vite.config.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "build:extension": "vite build && cp manifest.json dist/ && cp -r public/* dist/ 2>/dev/null || true"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": ""
+    "vite": "^6.3.5",
+    "vite-plugin-static-copy": "^3.0.2"
+  }
 }

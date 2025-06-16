@@ -82,7 +82,7 @@ function isProductElement(element: HTMLElement): boolean {
 }
 
 function addProductHoverListener(element: HTMLElement): void {
-  let hoverTimeout: NodeJS.Timeout;
+  let hoverTimeout: number;
 
   element.addEventListener("mouseenter", (e) => {
     hoverTimeout = setTimeout(() => {
@@ -408,3 +408,4 @@ function hideSustainabilityWidget(): void {
 function removeSustainabilityTracker(): void {
   hideSustainabilityWidget();
 }
+
