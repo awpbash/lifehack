@@ -1,0 +1,1 @@
+chrome.runtime.onInstalled.addListener(()=>{console.log("EcoCart+ background active")});chrome.runtime.onMessage.addListener((e,r,s)=>{e.type==="GET_SUSTAINABILITY_SCORE"&&s({score:"B+",reason:"Uses recycled materials but high emissions"})});

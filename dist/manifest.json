@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "EcoCart+ Sustainability Companion",
+  "version": "1.0",
+  "description": "See real-time sustainability scores and greener alternatives while shopping.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "image.png"
+  },
+  "permissions": ["activeTab", "scripting", "storage"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ]
+}
