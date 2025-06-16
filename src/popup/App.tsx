@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./index.css";
 import ratings from "../../ratings.json";
+import Alternatives from "./Alternatives";
 
 type Rating = {
   overall: number;
@@ -27,6 +28,7 @@ function App() {
   });
   const [isEnabled, setIsEnabled] = useState(true);
   const [brandUrl, setBrandUrl] = useState<string>("unknown");
+  const [showAlternatives, setShowAlternatives] = useState(false);
 
   useEffect(() => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -69,12 +71,12 @@ function App() {
 
   const getRatingColor = (rating: number): string => {
     switch (rating) {
-      case 5: return "#2e7d32"; // dark green
-      case 4: return "#66bb6a"; // light green
-      case 3: return "#fdd835"; // yellow
-      case 2: return "#ef5350"; // light red
-      case 1: return "#c62828"; // dark red
-      default: return "#bdbdbd"; // gray
+      case 5: return "#2e7d32";
+      case 4: return "#66bb6a";
+      case 3: return "#fdd835";
+      case 2: return "#ef5350";
+      case 1: return "#c62828";
+      default: return "#bdbdbd";
     }
   };
 
@@ -133,14 +135,15 @@ function App() {
         >
           🌐 Brand Info
         </a>
-        <a
-          href="options.html"
-          target="_blank"
+        <button
           className="action-button"
+          onClick={() => setShowAlternatives(!showAlternatives)}
         >
           🛍️ Sustainable Alternatives
-        </a>
+        </button>
       </div>
+
+      {showAlternatives && <Alternatives />}
 
       <footer>
         <a
