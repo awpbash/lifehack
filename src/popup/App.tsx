@@ -12,6 +12,7 @@ type Rating = {
 };
 
 interface Stats {
+  overall: number;
   analyzed: number;
   co2Saved: number;
   ecoChoices: number;
@@ -19,53 +20,46 @@ interface Stats {
 
 function App() {
   const [stats, setStats] = useState<Stats>({
+    overall: 0,
     analyzed: 0,
     co2Saved: 0,
     ecoChoices: 0,
   });
   const [isEnabled, setIsEnabled] = useState(true);
+  const [brandUrl, setBrandUrl] = useState<string>("unknown");
 
   useEffect(() => {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    const url = tabs[0]?.url;
-    let brand = "unknown";
-    console.log("Current tab URL:", url);
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const url = tabs[0]?.url;
+      if (!url) return;
 
-    if (url) {
       try {
         const hostname = new URL(url).hostname;
-        console.log("Current URL:", url);
-        console.log("Hostname:", hostname);
         const parts = hostname.split(".").filter(Boolean);
-        brand = parts.length >= 2 ? parts[parts.length - 2] : hostname;
-        //console.log("Detected brand:", brand);
-        // concatenate the brand with https://
-        brand = `https://${hostname}/`;
-        console.log("Brand URL:", brand);
-        window.localStorage['brand'] = brand; // Store the brand URL globally for use in other parts of the extension
+        const brand = parts.length >= 2 ? parts[parts.length - 2] : hostname;
+        const brandFormatted = `https://${hostname}/`;
+        window.localStorage["brand"] = brandFormatted;
+        const brandlink = ratings[brandFormatted as keyof typeof ratings]?.brand || "";
+        setBrandUrl(brandlink);
+        const storeData = ratings[brandFormatted as keyof typeof ratings] as Rating | undefined;
 
-      } catch (e) {
-        console.error("Invalid URL format", e);
-      }
-    }
+        chrome.storage.local.get(["enabled"], (result) => {
+          setIsEnabled(result.enabled !== false);
 
-    const storeData = ratings[brand as keyof typeof ratings] as Rating | undefined;
-    console.log("Store data:", storeData);
-    // Then load local storage *after* resolving storeData
-    chrome.storage.local.get(["enabled"], (result) => {
-      setIsEnabled(result.enabled !== false);
-
-      if (storeData) {
-        setStats({
-          analyzed: storeData.planet?.[0] ?? 0,
-          co2Saved: storeData.people?.[0] ?? 0,
-          ecoChoices: storeData.animal?.[0] ?? 0,
+          if (storeData) {
+            setStats({
+              overall: storeData.overall ?? 0,
+              analyzed: storeData.planet?.[0] ?? 0,
+              co2Saved: storeData.people?.[0] ?? 0,
+              ecoChoices: storeData.animal?.[0] ?? 0,
+            });
+          }
         });
+      } catch (e) {
+        console.error("Error parsing URL:", e);
       }
     });
-  });
-}, []);
-
+  }, []);
 
   const handleToggle = () => {
     const newEnabled = !isEnabled;
@@ -73,37 +67,91 @@ function App() {
     chrome.storage.local.set({ enabled: newEnabled });
   };
 
+  const getRatingColor = (rating: number): string => {
+    switch (rating) {
+      case 5: return "#2e7d32"; // dark green
+      case 4: return "#66bb6a"; // light green
+      case 3: return "#fdd835"; // yellow
+      case 2: return "#ef5350"; // light red
+      case 1: return "#c62828"; // dark red
+      default: return "#bdbdbd"; // gray
+    }
+  };
+
   return (
-    <>
+    <div className="container">
       <div className="header">
         <div className="logo">🌱 EcoCart</div>
         <div className="tagline">Sustainable Shopping Assistant</div>
       </div>
 
-      <div className="stats">
-        <div className="stat-item">
-          <span>Planet</span>
-          <span id="analyzed-count">{stats.analyzed}/5</span>
+      <div className="overall-score">
+        <div className="stars-container">
+          {[...Array(5)].map((_, i) => (
+            <span
+              key={i}
+              className={`star ${i < stats.overall ? "filled" : ""}`}
+              style={{ color: i < stats.overall ? getRatingColor(stats.overall) : "#ccc" }}
+            >
+              ★
+            </span>
+          ))}
         </div>
-        <div className="stat-item">
-          <span>People</span>
-          <span id="co2-saved">{stats.co2Saved}/5</span>
+        <div className="score-label">Overall Score: {stats.overall}/5</div>
+      </div>
+
+      <div className="stats-card">
+        <div className="stat">
+          <label>🌍 Planet</label>
+          <span>{stats.analyzed}/5</span>
         </div>
-        <div className="stat-item">
-          <span>Animals</span>
-          <span id="eco-choices">{stats.ecoChoices}/5</span>
+        <div className="stat">
+          <label>👥 People</label>
+          <span>{stats.co2Saved}/5</span>
+        </div>
+        <div className="stat">
+          <label>🦊 Animals</label>
+          <span>{stats.ecoChoices}/5</span>
         </div>
       </div>
 
-      <div className="toggle">
-        <span>Enable EcoCart</span>
+      <div className="toggle-row">
+        <span className="toggle-label">Enable EcoCart</span>
         <div
-          className={`switch ${isEnabled ? "active" : ""}`}
-          id="toggle-switch"
+          className={`toggle-switch ${isEnabled ? "enabled" : ""}`}
           onClick={handleToggle}
-        ></div>
+        >
+          <div className="toggle-knob" />
+        </div>
       </div>
-    </>
+
+      <div className="links-row">
+        <a
+          href={`https://directory.goodonyou.eco/brand/${brandUrl}`}
+          target="_blank"
+          className="action-button"
+        >
+          🌐 Brand Info
+        </a>
+        <a
+          href="options.html"
+          target="_blank"
+          className="action-button"
+        >
+          🛍️ Sustainable Alternatives
+        </a>
+      </div>
+
+      <footer>
+        <a
+          href="https://ecocart.io"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Learn more about EcoCart →
+        </a>
+      </footer>
+    </div>
   );
 }
 
