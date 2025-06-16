@@ -1,7 +1,7 @@
 im gay
 
 ```bash
-git clone github.com/awpbash/lifehack
+git clone https://github.com/awpbash/lifehack.git
 cd lifehack
 npm install
 npm run build
