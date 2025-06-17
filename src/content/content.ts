@@ -51,167 +51,95 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 function initializeSustainabilityTracker(): void {
-  // Remove existing tracker
   removeSustainabilityTracker();
 
-  // Create and add the fixed header widget
   sustainabilityWidget = createSustainabilityWidget();
   document.body.appendChild(sustainabilityWidget);
 
-  // Add styles to ensure the widget stays at the top
   const style = document.createElement('style');
   style.textContent = `
     .eco-sustainability-widget {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
+      bottom: 32px;
+      right: 32px;
       z-index: 9999;
-      background: white;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      padding: 10px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-family: Arial, sans-serif;
-    }
-    .eco-widget-content {
-      width: 100%;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .eco-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .eco-logo {
-      font-size: 24px;
-    }
-    .eco-title {
-      font-weight: bold;
-      font-size: 16px;
-    }
-    .eco-score {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-    }
-    .eco-score-item {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .eco-score-value {
-      font-weight: bold;
-    }
-    .eco-close-btn {
       background: none;
-      border: none;
+    }
+    .eco-widget {
+
+    }
+
+    .eco-earth-img {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
       cursor: pointer;
-      font-size: 20px;
-      padding: 5px;
+      transition: transform 0.2s ease;
+    }
+
+    .eco-earth-img:hover {
+      transform: scale(1.1);
     }
   `;
   document.head.appendChild(style);
 
-  // Add padding to body to prevent content from being hidden under the widget
-  document.body.style.paddingTop = '60px';
+  // ✅ Set happy earth directly
+  const happyEarth = chrome.runtime.getURL('happy earth.png');
+  const earthImg = sustainabilityWidget.querySelector('.eco-earth-img') as HTMLImageElement;
+  // console.log('Happy Earth image URL:', happyEarth);
+  // console.log('Earth image element:', earthImg);
+  if (earthImg) {
+    earthImg.src = happyEarth;
+    earthImg.alt = 'Happy Earth';
+  }
 
-  // Load initial sustainability data
   loadSustainabilityData();
+  
 }
+
 
 function createSustainabilityWidget(): HTMLElement {
   const widget = document.createElement("div");
   widget.className = "eco-sustainability-widget";
   widget.innerHTML = `
-    <div class="eco-widget-content">
-      <div class="eco-header">
-        <div class="eco-logo">🌱</div>
-        <div class="eco-title">Carbon Footprint Tracker</div>
+    <div class="eco-widget">
+      <img class="eco-earth-img" src="" alt="Happy Earth" />
+      <div class="eco-score-item">
+        <span class="eco-icon">🌍</span>
+        <span class="eco-score-value eco-carbon-value">--</span>
+        <span class="eco-score-label">kg CO₂</span>
       </div>
-      
-      <div class="eco-score">
-        <div class="eco-score-item">
-          <span class="eco-icon">🌍</span>
-          <span class="eco-score-value">--</span>
-          <span class="eco-score-label">kg CO₂</span>
-        </div>
-        <div class="eco-score-item">
-          <span class="eco-icon">💧</span>
-          <span class="eco-score-value">--</span>
-          <span class="eco-score-label">L water</span>
-        </div>
-      </div>
-
-      <button class="eco-close-btn">×</button>
     </div>
-  `;
-
-  // Add close button functionality
-  const closeBtn = widget.querySelector(".eco-close-btn") as HTMLButtonElement;
-  closeBtn.addEventListener("click", () => {
-    removeSustainabilityTracker();
-  });
-
+    `;
   return widget;
 }
 
 async function loadSustainabilityData(): Promise<void> {
   try {
     const productInfo = extractProductInfo();
-    console.log('Extracted product info:', productInfo);
-
-    if (!productInfo) {
-      console.error('Could not extract product information');
-      return;
-    }
-
-    // Use the brand that was already extracted in extractProductInfo
+    if (!productInfo) return;
     const brand = productInfo.brand;
-    console.log('Using brand from product info:', brand);
-
-    // Load weights.json to look up the weight for the product
     try {
       const weightsUrl = chrome.runtime.getURL('weights.json');
-      console.log('Fetching weights from:', weightsUrl);
       const weightsResponse = await fetch(weightsUrl);
-      if (!weightsResponse.ok) {
-        throw new Error(`Failed to fetch weights.json: ${weightsResponse.status} ${weightsResponse.statusText}`);
-      }
+      if (!weightsResponse.ok) throw new Error(`Failed to fetch weights.json: ${weightsResponse.status} ${weightsResponse.statusText}`);
       const weightsData = await weightsResponse.json();
-      console.log('Successfully loaded weights data:', weightsData);
 
-      const weight = weightsData[productInfo.name] || 0.5; // Fallback to 0.5 if not found
-      console.log('Looked up weight:', weight);
 
-      const productData = {
-        name: productInfo.name,
-        weight: weight,
-        brand: brand
-      };
-      console.log('Constructed ProductData:', productData);
-
+      const weight = weightsData[productInfo.name] || 0.5;
+      const productData = { name: productInfo.name, weight: weight, brand: brand };
       const carbonFootprint = await calculateCarbonFootprint(productData);
-      console.log('Calculated carbon footprint:', carbonFootprint);
-
       // Update the widget values
       if (sustainabilityWidget) {
-        const carbonValueElement = sustainabilityWidget.querySelector('.eco-score-item:first-child .eco-score-value');
-        console.log('Carbon value element found:', carbonValueElement);
-        if (carbonValueElement) {
-          carbonValueElement.textContent = carbonFootprint.toFixed(2);
-          console.log('Updated carbon value element with:', carbonFootprint.toFixed(2));
-        } else {
-          console.error('Carbon value element not found');
-        }
-
-        // TODO: Implement water usage calculation
-        const waterValueElement = sustainabilityWidget.querySelector('.eco-score-item:last-child .eco-score-value');
-        if (waterValueElement) {
-          waterValueElement.textContent = '--'; // Placeholder until water calculation is implemented
+        const earthImg = sustainabilityWidget.querySelector('.eco-earth-img') as HTMLImageElement;
+        const carbonValue = sustainabilityWidget.querySelector('.eco-carbon-value') as HTMLDivElement;
+        if (carbonValue) carbonValue.textContent = carbonFootprint.toFixed(2);
+        if (earthImg) {
+          const happyEarth = chrome.runtime.getURL('happy_earth.png');
+          const sadEarth = chrome.runtime.getURL('sad_earth.png');
+          earthImg.src = carbonFootprint <= 30 ? happyEarth : sadEarth;
+          earthImg.alt = carbonFootprint <= 30 ? 'Happy Earth' : 'Sad Earth';
         }
       }
     } catch (error) {
@@ -274,7 +202,6 @@ function removeSustainabilityTracker(): void {
   if (sustainabilityWidget) {
     sustainabilityWidget.remove();
     sustainabilityWidget = null;
-    document.body.style.paddingTop = '';
   }
 }
 

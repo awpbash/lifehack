@@ -20,7 +20,8 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["weights.json", "locations.json", "carbonIntensity.json"],
+      "resources": ["weights.json", "locations.json", 
+      "carbonIntensity.json", "happy_earth.png", "sad_earth.png"],
       "matches": ["<all_urls>"]
     }
   ],

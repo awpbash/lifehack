@@ -1,5 +1,5 @@
 // Fixed energy consumption per kg of product (kWh/kg)
-const ENERGY_PER_KG = 0.5; // adjust based on your data
+const ENERGY_PER_KG = 30; // adjust based on your data
 
 interface ProductData {
   name: string;
