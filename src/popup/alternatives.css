@@ -1,53 +1,113 @@
 /* alternatives.css */
 .alt-container {
-  padding: 0 8px;
-  font-family: "Segoe UI", sans-serif;
-  width: 300px;
+  padding: 0 16px;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  width: 100%;
+  max-width: 360px;
   box-sizing: border-box;
+  color: #222;
+
+  scrollbar-width: thin;              /* Firefox */
+  scrollbar-color: #ccc transparent;  /* Firefox */
+}
+/* doesnt fucking work */
+.alt-container::-webkit-scrollbar {
+  width: 2px;                         /* Chrome/Safari */
+}
+
+.alt-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.alt-container::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 8px;
+}
+
+
+.alt-container h2 {
+  margin: 16px 0 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #222;
+  text-align: center;
 }
 
 .alt-search {
   width: 100%;
-  padding: 8px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  margin-bottom: 16px;
-}
-
-.alt-results {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.alt-item {
-  display: flex;
-  flex-direction: column;
-  text-decoration: none;
+  padding: 10px 12px;
   border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-  background: white;
+  border: 1px solid #ddd;
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
-.alt-img {
-  width: 100%;
-  height: auto;
-}
-
-.alt-brand {
-  padding: 8px;
-  font-size: 0.9em;
-  background: #f5f5f5;
-  color: #333;
-  text-align: center;
+.alt-search:focus {
+  outline: none;
+  border-color: #6bc17e;
+  box-shadow: 0 0 0 2px rgba(107, 193, 126, 0.15);
 }
 
 .alt-results-scroll {
   max-height: 200px;
   overflow-y: auto;
-  padding-right: 0px;
+  padding-right: 4px;
+  scrollbar-width: thin;                /* Firefox */
+  scrollbar-color: #bbb transparent;    /* Firefox */
 }
 
+/* Chrome, Edge, Safari */
+.alt-results-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.alt-results-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.alt-results-scroll::-webkit-scrollbar-thumb {
+  background-color: #bbb;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.alt-results-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: #999;
+}
+
+
+.alt-item {
+  background: #ffffff;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.07);
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  margin-bottom: 14px;
+}
+
+.alt-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.1);
+}
+
+.alt-img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  background: #f2f2f2;
+}
+
+.alt-brand {
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  color: #444;
+  background: #fafafa;
+  text-align: center;
+  font-weight: 500;
+  border-top: 1px solid #eee;
+  text-transform: capitalize;
+}
