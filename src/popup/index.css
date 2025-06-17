@@ -215,6 +215,7 @@ body, html {
   transition: background 0.2s ease;
   border: none;
   display: inline-block;
+  cursor: pointer;
 }
 
 .action-button:hover {
