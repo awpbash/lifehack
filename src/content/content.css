@@ -75,6 +75,15 @@
   color: #1f2937;
 }
 
+.eco-grid div:hover {
+  background-color: #d3f0d9;
+  transition: background-color 0.3s ease;
+}
+.eco-quadrant:hover {
+  background-color: #d3f0d9;
+  transition: background-color 0.3s ease;
+}
+
 @media (max-width: 768px) {
   .eco-sustainability-widget {
     padding: 8px 12px;

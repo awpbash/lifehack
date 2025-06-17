@@ -71,6 +71,7 @@ function App() {
     setIsEnabled(newEnabled);
     chrome.storage.local.set({ enabled: newEnabled });
   };
+  
 
   const getRatingColor = (rating: number): string => {
     switch (rating) {

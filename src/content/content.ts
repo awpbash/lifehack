@@ -85,19 +85,20 @@ function initializeSustainabilityTracker(): void {
   document.head.appendChild(style);
 
   // ✅ Set happy earth directly
-  const happyEarth = chrome.runtime.getURL('happy earth.png');
+  const happyEarth = chrome.runtime.getURL('happy_earth.png');
   const earthImg = sustainabilityWidget.querySelector('.eco-earth-img') as HTMLImageElement;
   // console.log('Happy Earth image URL:', happyEarth);
   // console.log('Earth image element:', earthImg);
   if (earthImg) {
     earthImg.src = happyEarth;
     earthImg.alt = 'Happy Earth';
-  }
+    earthImg.addEventListener('click', () => {
+    console.log("🌍 Earth icon clicked");
+    togglePopup();
+  })
 
-  loadSustainabilityData();
-  
+  loadSustainabilityData(); 
 }
-
 
 function createSustainabilityWidget(): HTMLElement {
   const widget = document.createElement("div");
@@ -154,7 +155,7 @@ async function loadSustainabilityData(): Promise<void> {
 function extractProductInfo(): ProductInfo | null {
   try {
     // Find the product container
-    const productContainer = document.querySelector('article, .card, [class*="product"], [id*="product"]');
+    const productContainer = document.querySelector('[class*=product][class*=name], [class*=product][class*=title], [id*=product][id*=name], [id*=product][id*=title], [data-auto-id*=product][data-auto-id*=title], [data-auto-id*=product][data-auto-id*=name]');
     console.log('Found product container:', productContainer);
     
     if (!productContainer) {
@@ -167,6 +168,7 @@ function extractProductInfo(): ProductInfo | null {
     const priceElement = productContainer.querySelector('[class*="price"], .price');
     const imageElement = productContainer.querySelector('img');
 
+    const apiKey = import.meta.env.VITE_API_KEY;
     console.log('Found elements:', {
       title: titleElement?.textContent,
       price: priceElement?.textContent,
@@ -205,3 +207,230 @@ function removeSustainabilityTracker(): void {
   }
 }
 
+function sendToOpenAI(prompt: string): void {
+  // Retrieve API key from environment variable or configuration
+  const apikey = import.meta.env.VITE_API_KEY;
+  fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apikey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "gpt-4",
+      messages: [
+        { role: "system", content: "You are a sustainability analyst." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.7
+    })
+  })
+    .then((res: Response) => res.json())
+    .then((data: any) => {
+      const reply = data.choices?.[0]?.message?.content;
+      console.log("🌍 OpenAI response:", reply);
+      renderPopupTable(reply || "No data returned");
+    })
+    .catch((err: unknown) => console.error("❌ OpenAI Error:", err));
+}
+
+let currentPopup: HTMLElement | null = null;
+
+function togglePopup(): void {
+  // If popup is open, remove it
+  if (currentPopup) {
+    currentPopup.remove();
+    currentPopup = null;
+    return;
+  }
+
+  // Create popup container
+  const popup = document.createElement('div');
+  popup.className = 'eco-popup';
+  popup.id = 'eco-popup';
+  popup.style.position = 'fixed';
+  popup.style.bottom = '110px';
+  popup.style.right = '32px';
+  popup.style.zIndex = '10000';
+  popup.style.background = '#fff';
+  popup.style.border = '1px solid #ddd';
+  popup.style.borderRadius = '12px';
+  popup.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)';
+  popup.style.padding = '24px 20px 20px 20px';
+  popup.style.minWidth = '320px';
+  popup.style.maxWidth = '400px';
+  popup.style.fontFamily = 'inherit';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '×';
+  closeBtn.style.position = 'absolute';
+  closeBtn.style.top = '8px';
+  closeBtn.style.right = '12px';
+  closeBtn.style.background = 'none';
+  closeBtn.style.border = 'none';
+  closeBtn.style.fontSize = '1.5rem';
+  closeBtn.style.cursor = 'pointer';
+  closeBtn.onclick = () => {
+    popup.remove();
+    currentPopup = null;
+  };
+  popup.appendChild(closeBtn);
+
+  const placeholder = document.createElement('div');
+  placeholder.id = 'eco-popup-content';
+  placeholder.innerHTML = '<em>Loading sustainability analysis...</em>';
+  popup.appendChild(placeholder);
+
+  document.body.appendChild(popup);
+  currentPopup = popup;
+
+  const productInfo = extractProductInfo();
+  if (!productInfo) {
+    placeholder.innerHTML = '❌ Could not extract product info.';
+    return;
+  }
+
+  const prompt = `Using only the information found at this URL: ${productInfo.url}, extract the product name, brand, and material. Then, evaluate the product's sustainability in four categories:
+
+Material (e.g. natural, recycled, toxic, biodegradable)
+
+Production (e.g. ethical sourcing, labor, water usage, emissions)
+
+Durability (e.g. long-lasting, disposable, wear resistance)
+
+End-of-life (e.g. recyclable, compostable, landfill)
+
+make sure each section has less than 16 words`;
+ console.log("🌍 Sending prompt to OpenAI:", prompt);
+  sendToOpenAI(prompt);
+}
+
+}
+function renderPopupTable(response: string): void {
+  const container = document.getElementById("eco-popup-content");
+  if (!container) return;
+  container.innerHTML = "";
+
+  // Add style block once
+  if (!document.getElementById("eco-popup-style")) {
+    const style = document.createElement("style");
+    style.id = "eco-popup-style";
+    style.textContent = `
+      .eco-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        height: 200px;
+        transition: all 0.3s ease;
+      }
+
+      .eco-quadrant {
+        background: #e7f5e9;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        font-size: 14px;
+        border-radius: 12px;
+        cursor: pointer;
+        position: relative;
+        transition: all 0.3s ease;
+      }
+
+      .eco-expanded {
+        grid-column: 1 / span 2;
+        grid-row: 1 / span 2;
+        z-index: 1;
+        position: relative;
+      }
+
+      .eco-close-btn {
+        position: absolute;
+        top: 8px;
+        right: 12px;
+        background: white;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        z-index: 10;
+        color: #222;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        line-height: 30px;
+        text-align: center;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Heading + image
+  const heading = document.createElement("h3");
+  heading.textContent = "Find out more!";
+  heading.style.textAlign = "center";
+  heading.style.marginBottom = "10px";
+  heading.style.fontSize = "1.2rem";
+  heading.style.fontWeight = "bold";
+
+  const earthImg = document.createElement("img");
+  earthImg.src = chrome.runtime.getURL("sad_earth.png");
+  earthImg.alt = "Earth";
+  earthImg.style.width = "80px";
+  earthImg.style.display = "block";
+  earthImg.style.margin = "0 auto 10px auto";
+
+  container.appendChild(heading);
+  container.appendChild(earthImg);
+
+  const grid = document.createElement("div");
+  grid.className = "eco-grid";
+
+  const categories = [
+    { label: "Material", icon: "♻️" },
+    { label: "Production", icon: "🏭" },
+    { label: "Durability", icon: "🧱" },
+    { label: "End-of-life", icon: "🪦" }
+  ];
+
+  categories.forEach(({ label, icon }) => {
+    const cell = document.createElement("div");
+    const regex = new RegExp(`${label}:\\s*([^\\n]+)`, "i");
+    const match = response.match(regex);
+    const content = match ? match[1].trim() : "<em>No info</em>";
+
+    cell.className = "eco-quadrant";
+    cell.innerHTML = `
+      <div style="font-size: 1.5rem">${icon}</div>
+      <div style="margin-top: 6px; font-weight: 600;">${label}</div>
+    `;
+
+    cell.addEventListener("click", () => {
+      // Collapse all quadrants
+      const all = grid.querySelectorAll(".eco-quadrant");
+      all.forEach(q => {
+        if (q !== cell) (q as HTMLElement).style.display = "none";
+      });
+      cell.classList.add("eco-expanded");
+      cell.innerHTML = `
+        <button class="eco-close-btn">×</button>
+        <div style="font-size: 2rem; text-align:center; margin-top: 10px;">${icon}</div>
+        <h3 style="text-align:center; margin: 10px 0;">${label}</h3>
+        <p style="text-align:left; padding: 0 12px;">${content}</p>
+      `;
+
+      const close = cell.querySelector(".eco-close-btn") as HTMLButtonElement;
+      close.onclick = () => renderPopupTable(response);
+    });
+
+    grid.appendChild(cell);
+  });
+
+  container.appendChild(grid);
+}
+
+
+function removeSustainabilityTracker() {
+  throw new Error('Function not implemented.');
+}

@@ -15,7 +15,11 @@
     {
       "matches": ["<all_urls>"],
       "js": ["content.js"],
-      "css": ["content.css"]
+      "css": ["content.css"],
+      "exclude_matches": [
+      "https://chrome.google.com/*",
+      "https://platform.openai.com/settings/*"
+    ]
     }
   ],
   "web_accessible_resources": [
