@@ -48,7 +48,7 @@ Extension in action!
     <table>
     <tr>
         <td align="center">
-        <img src="assets/summary.png" alt="Icon 1" width="200"/>
+        <img src="assets/image.png" alt="Icon 1" width="215"/>
         <br/><sub>Detailed explaination of metrics</sub>
         </td>
         <td align="center">
