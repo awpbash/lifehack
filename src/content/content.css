@@ -12,6 +12,15 @@
   gap: 10px;
 }
 
+.eco-earth-text {
+  margin-top: 6px;
+  font-size: 20px;
+  color: #4b5563;
+  cursor: pointer;
+  text-align: center;
+}
+
+
 .eco-logo {
   font-size: 24px;
 }
@@ -32,23 +41,23 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 4px 8px;
+  padding: 8px 12px;
   background: #f9fafb;
-  border-radius: 6px;
+  border-radius: 9px;
 }
 
 .eco-widget {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
-  padding: 4px 8px;
+  gap: 8px;
+  padding: 10px 14px;
   background: #f9fafb;
-  border-radius: 6px;
+  border-radius: 10px;
 }
 
 .eco-icon {
-  font-size: 16px;
+  font-size: 24px;
 }
 
 .eco-score-value {
@@ -58,15 +67,15 @@
 
 .eco-score-label {
   color: #6b7280;
-  font-size: 12px;
+  font-size: 18px;
 }
 
 .eco-close-btn {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 20px;
-  padding: 5px;
+  font-size: 24px;
+  padding: 8px;
   color: #6b7280;
   transition: color 0.2s;
 }

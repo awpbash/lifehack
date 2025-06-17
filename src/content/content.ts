@@ -105,6 +105,7 @@ function createSustainabilityWidget(): HTMLElement {
   widget.className = "eco-sustainability-widget";
   widget.innerHTML = `
     <div class="eco-widget">
+      <div class="eco-earth-text">Click to learn more</div>
       <img class="eco-earth-img" src="" alt="Happy Earth" />
       <div class="eco-score-item">
         <span class="eco-icon">🌍</span>
@@ -126,12 +127,23 @@ async function loadSustainabilityData(): Promise<void> {
       const weightsResponse = await fetch(weightsUrl);
       if (!weightsResponse.ok) throw new Error(`Failed to fetch weights.json: ${weightsResponse.status} ${weightsResponse.statusText}`);
       const weightsData = await weightsResponse.json();
+      
+      const ratingsData = await fetch(chrome.runtime.getURL('ratings.json')).then(res => res.json());
 
+      const rawName = productInfo.name.toLowerCase();
+      const weightKeys = Object.keys(weightsData).map(k => k.toLowerCase());
+      const matchedKey = weightKeys.find(key => rawName.includes(key));
+      const finalKey = matchedKey 
+        ? Object.keys(weightsData).find(k => k.toLowerCase() === matchedKey)
+        : null;
+      const true_weight = weightsData[finalKey || ""] || 0.5;
 
-      const weight = weightsData[productInfo.name] || 0.5;
-      const productData = { name: productInfo.name, weight: weight, brand: brand };
+      const productData = { name: productInfo.name, weight: true_weight, brand: brand };
       const carbonFootprint = await calculateCarbonFootprint(productData);
-      // Update the widget values
+      const brandLink = `https://${brand}/`;
+      const stats = ratingsData[brandLink];
+      console.log("Brand stats:", stats);
+      // Update widget
       if (sustainabilityWidget) {
         const earthImg = sustainabilityWidget.querySelector('.eco-earth-img') as HTMLImageElement;
         const carbonValue = sustainabilityWidget.querySelector('.eco-carbon-value') as HTMLDivElement;
@@ -139,8 +151,13 @@ async function loadSustainabilityData(): Promise<void> {
         if (earthImg) {
           const happyEarth = chrome.runtime.getURL('happy_earth.png');
           const sadEarth = chrome.runtime.getURL('sad_earth.png');
-          earthImg.src = carbonFootprint <= 30 ? happyEarth : sadEarth;
-          earthImg.alt = carbonFootprint <= 30 ? 'Happy Earth' : 'Sad Earth';
+          if (stats?.overall >= 4) {
+            earthImg.src = happyEarth;
+            earthImg.alt = 'Happy Earth';
+          } else {
+            earthImg.src = sadEarth;
+            earthImg.alt = 'Sad Earth';
+          }
         }
       }
     } catch (error) {
@@ -164,18 +181,18 @@ function extractProductInfo(): ProductInfo | null {
     }
 
     // Extract product information
-    const titleElement = productContainer.querySelector('h1, h2, h3, h4, [class*="title"], [class*="name"]');
+    const titleElement = productContainer.querySelector('[class*=product][class*=name], [class*=product][class*=title], [id*=product][id*=name], [id*=product][id*=title], [data-auto-id*=product][data-auto-id*=title], [data-auto-id*=product][data-auto-id*=name]');
     const priceElement = productContainer.querySelector('[class*="price"], .price');
     const imageElement = productContainer.querySelector('img');
 
     const apiKey = import.meta.env.VITE_API_KEY;
     console.log('Found elements:', {
-      title: titleElement?.textContent,
+      title: titleElement,
       price: priceElement?.textContent,
       image: imageElement?.src
     });
 
-    const productName = titleElement?.textContent?.trim() || 'Unknown Product';
+    const rawName = titleElement?.textContent?.trim().toLowerCase() || 'Unknown Product';
     const productPrice = priceElement?.textContent?.trim() || '';
     const productImage = imageElement?.src || '';
     const productUrl = window.location.href;
@@ -188,7 +205,7 @@ function extractProductInfo(): ProductInfo | null {
     console.log('Extracted brand from URL:', productBrand);
 
     return {
-      name: productName,
+      name: rawName,
       price: productPrice,
       image: productImage,
       url: productUrl,
