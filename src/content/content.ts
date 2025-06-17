@@ -105,7 +105,7 @@ function initializeSustainabilityTracker(): void {
     style.textContent = `
     .eco-sustainability-widget {
       position: fixed;
-      bottom: 32px;
+      top: 32px;
       right: 32px;
       z-index: 9999;
       background: none;
@@ -115,8 +115,8 @@ function initializeSustainabilityTracker(): void {
     }
 
     .eco-earth-img {
-      width: 60px;
-      height: 60px;
+      width: 120px;
+      height: 120px;
       border-radius: 50%;
       box-shadow: 0 4px 12px rgba(0,0,0,0.2);
       cursor: pointer;
