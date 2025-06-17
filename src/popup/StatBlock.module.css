@@ -1,0 +1,52 @@
+.statBlock {
+  background-color: #f5f0e1;
+  border-radius: 12px;
+  padding: 8px 6px;
+  text-align: center;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
+}
+
+.statContent {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: 100%;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+
+.left-group {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  gap: 6px;
+}
+
+.icon {
+  width: 20px;
+  height: 20px;
+  object-fit: cover;
+  object-position: center;
+  transform: scale(1.5);
+  flex-shrink: 0;
+}
+
+.label {
+  font-weight: 600;
+  font-size: 0.7em;
+  line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 1;
+}
+
+.score {
+  font-size: 0.8em;
+  color: #555;
+  white-space: nowrap;
+  flex-shrink: 0;
+}

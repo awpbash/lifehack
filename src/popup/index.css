@@ -7,24 +7,63 @@ body, html {
   width: 300px;
 }
 
+.card-container {
+  background:#f5f7f7;
+  border-radius: 24px;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+  padding: 20px 16px;
+  position: relative;
+  z-index: 2;
+  margin-top: -40px;
+  height: calc(100% - 120px);
+  overflow-y: auto;
+}
+
 .container {
   padding: 20px;
   box-sizing: border-box;
 }
 
-.header {
-  text-align: center;
-  margin-bottom: 16px;
+.content {
+  padding: 12px;
+  box-sizing: border-box;
+  border-radius: 15px;
 }
 
-.logo {
-  font-size: 1.6em;
-  font-weight: bold;
+.top-bg {
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.header-container {
+  height: 110px;
+  box-sizing: border-box;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center; 
+}
+
+.header {
+  text-align: center;
+  padding-top: 24px;
+  padding-bottom: 24px;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.header-title {
+  font-size: 1.7em;
+  font-weight: 600;
+  color: white;
 }
 
 .tagline {
-  font-size: 0.85em;
-  color: #666;
+  font-size: 0.9em;
+  color: white;
+  font-style: italic;
+  margin-top: 5px;
 }
 
 .stats-card {
@@ -33,6 +72,8 @@ body, html {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   padding: 14px 16px;
   margin-bottom: 16px;
+  transform-style: preserve-3d;
+  transition: transform 0.6s; 
 }
 
 .stat {
@@ -43,8 +84,66 @@ body, html {
   border-bottom: 1px solid #eee;
 }
 
+.statBlock-container {
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
 .stat:last-child {
   border-bottom: none;
+}
+
+.flip-card {
+  width: 100%;
+  height: 140px;
+  perspective: 1000px;
+  margin-bottom: 16px;
+}
+
+.flip-card-inner {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.6s;
+}
+
+.flip-card:hover .flip-card-inner {
+  transform: rotateY(180deg);
+}
+
+.flip-card-front,
+.flip-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 10px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  background: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
+  overflow: hidden; 
+}
+
+.flip-card-back {
+  transform: rotateY(180deg);
+  text-align: center;
+  color: #333;
+}
+
+.back-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
 }
 
 .toggle-row {
@@ -95,18 +194,21 @@ body, html {
 }
 
 .action-button {
-  background: #2e7d32;
+  background: #6e9277;
   color: white;
   padding: 10px;
-  border-radius: 8px;
+  border-radius: 50px;
   text-align: center;
   text-decoration: none;
   font-size: 0.9em;
+  font-weight: bold;
   transition: background 0.2s ease;
+  border: none;
+  display: inline-block;
 }
 
 .action-button:hover {
-  background: #1b5e20;
+  background: rgb(25, 86, 62);
 }
 
 footer {
@@ -116,8 +218,8 @@ footer {
 }
 
 .overall-score {
-  margin-top: 14px;
-  margin-bottom: 22px;
+  margin-top: 8px;
+  margin-bottom: 18px;
   text-align: center;
 }
 
@@ -135,7 +237,7 @@ footer {
 }
 
 .star.filled {
-  color: #4caf50; /* Green stars for eco-friendly vibe */
+  color: #4caf50; 
 }
 
 .score-label {
