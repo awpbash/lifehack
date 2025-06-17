@@ -1,411 +1,532 @@
 /// <reference types="chrome"/>
+import "./content.css";
+import { calculateCarbonFootprint } from "../utils/carbonCalculator";
 
 interface ProductInfo {
-  name: string;
-  price: string;
-  image: string;
-  url: string;
+    name: string;
+    price: string;
+    image: string;
+    url: string;
+    brand: string;
 }
 
 interface SustainabilityData {
-  sustainabilityScore: number;
-  carbonFootprint: number;
-  waterUsage: string;
-  recyclableContent: number;
-  certifications: string[];
-  alternatives: Alternative[];
+    sustainabilityScore: number;
+    carbonFootprint: number;
+    waterUsage: string;
+    recyclableContent: number;
+    certifications: string[];
+    alternatives: Alternative[];
 }
 
 interface Alternative {
-  name: string;
-  brand: string;
-  score: number;
-  price: string;
-  savings: string;
+    name: string;
+    brand: string;
+    score: number;
+    price: string;
+    savings: string;
 }
 
 let isEnabled = true;
 let sustainabilityWidget: HTMLElement | null = null;
 
+let currentUrl = window.location.href;
+let urlCheckInterval: NodeJS.Timeout | null = null;
+
+function startUrlMonitoring(): void {
+    if (urlCheckInterval) return;
+
+    urlCheckInterval = setInterval(() => {
+        if (window.location.href !== currentUrl) {
+            console.log(
+                "🔄 URL changed from",
+                currentUrl,
+                "to",
+                window.location.href,
+            );
+            currentUrl = window.location.href;
+
+            setTimeout(() => {
+                if (isEnabled) {
+                    initializeSustainabilityTracker();
+                }
+            }, 1000);
+        }
+    }, 500);
+}
+
+function stopUrlMonitoring(): void {
+    if (urlCheckInterval) {
+        clearInterval(urlCheckInterval);
+        urlCheckInterval = null;
+    }
+}
+
 // Initialize
 chrome.storage.local.get(["enabled"], (result) => {
-  isEnabled = result.enabled !== false;
-  if (isEnabled) {
-    initializeSustainabilityTracker();
-  }
+    isEnabled = result.enabled !== false;
+    if (isEnabled) {
+        initializeSustainabilityTracker();
+        startUrlMonitoring(); // ADD THIS LINE
+    }
 });
+
+function removeSustainabilityTracker(): void {
+    console.log(sustainabilityWidget);
+    if (sustainabilityWidget) {
+        sustainabilityWidget.remove();
+        sustainabilityWidget = null;
+    }
+}
 
 // Listen for toggle messages
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "toggle") {
-    isEnabled = request.enabled;
-    if (isEnabled) {
-      initializeSustainabilityTracker();
-    } else {
-      removeSustainabilityTracker();
+    console.log(request);
+    if (request.action === "toggle") {
+        isEnabled = request.enabled !== false;
+        if (isEnabled) {
+            initializeSustainabilityTracker();
+            startUrlMonitoring(); // ADD THIS LINE
+        } else {
+            removeSustainabilityTracker();
+            startUrlMonitoring(); // ADD THIS LINE
+        }
     }
-  }
 });
 
 function initializeSustainabilityTracker(): void {
-  // Remove existing tracker
-  removeSustainabilityTracker();
+    removeSustainabilityTracker();
 
-  // Add hover listeners to product elements
-  const productSelectors = [
-    '[data-testid*="product"]',
-    ".product",
-    ".item",
-    '[class*="product"]',
-    '[id*="product"]',
-    "article",
-    ".card",
-  ];
+    sustainabilityWidget = createSustainabilityWidget();
+    console.log(sustainabilityWidget);
+    document.body.appendChild(sustainabilityWidget);
 
-  productSelectors.forEach((selector) => {
-    const elements = document.querySelectorAll(selector);
-    elements.forEach((element) => {
-      if (isProductElement(element as HTMLElement)) {
-        addProductHoverListener(element as HTMLElement);
-      }
-    });
-  });
-}
+    const style = document.createElement("style");
+    style.textContent = `
+    .eco-sustainability-widget {
+      position: fixed;
+      top: 32px;
+      right: 32px;
+      z-index: 9999;
+      background: none;
+    }
+    .eco-widget {
 
-function isProductElement(element: HTMLElement): boolean {
-  const text = element.textContent?.toLowerCase() || "";
-  const hasPrice = /\$\d+|\d+\.\d+|price/i.test(text);
-  const hasProductKeywords = /buy|add to cart|product|item/i.test(text);
-  const hasImages = element.querySelector("img");
+    }
 
-  return (hasPrice || hasProductKeywords) && !!hasImages && text.length > 10;
-}
+    .eco-earth-img {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
 
-function addProductHoverListener(element: HTMLElement): void {
-  let hoverTimeout: number;
+    .eco-earth-img:hover {
+      transform: scale(1.1);
+    }
+  `;
+    document.head.appendChild(style);
 
-  element.addEventListener("mouseenter", (e) => {
-    hoverTimeout = setTimeout(() => {
-      showSustainabilityWidget(e.target as HTMLElement);
-    }, 800);
-  });
+    // ✅ Set happy earth directly
+    const happyEarth = chrome.runtime.getURL("happy_earth.png");
+    const earthImg = sustainabilityWidget.querySelector(
+        ".eco-earth-img",
+    ) as HTMLImageElement;
+    // console.log('Happy Earth image URL:', happyEarth);
+    // console.log('Earth image element:', earthImg);
+    if (earthImg) {
+        earthImg.src = happyEarth;
+        earthImg.alt = "Happy Earth";
+        earthImg.addEventListener("click", () => {
+            console.log("🌍 Earth icon clicked");
+            togglePopup();
+        });
 
-  element.addEventListener("mouseleave", () => {
-    clearTimeout(hoverTimeout);
-    hideSustainabilityWidget();
-  });
-}
+        loadSustainabilityData();
+    }
 
-function showSustainabilityWidget(productElement: HTMLElement): void {
-  if (sustainabilityWidget) {
-    hideSustainabilityWidget();
-  }
-
-  const productInfo = extractProductInfo(productElement);
-  const rect = productElement.getBoundingClientRect();
-
-  sustainabilityWidget = createSustainabilityWidget(productInfo);
-  document.body.appendChild(sustainabilityWidget);
-
-  // Position widget
-  const widgetRect = sustainabilityWidget.getBoundingClientRect();
-  let top = rect.top + window.scrollY - widgetRect.height - 10;
-  let left = rect.left + window.scrollX + rect.width / 2 - widgetRect.width / 2;
-
-  // Adjust if widget goes off screen
-  if (top < window.scrollY) {
-    top = rect.bottom + window.scrollY + 10;
-  }
-  if (left < 0) {
-    left = 10;
-  }
-  if (left + widgetRect.width > window.innerWidth) {
-    left = window.innerWidth - widgetRect.width - 10;
-  }
-
-  sustainabilityWidget.style.top = top + "px";
-  sustainabilityWidget.style.left = left + "px";
-
-  // Animate in
-  setTimeout(() => {
-    sustainabilityWidget?.classList.add("eco-widget-visible");
-  }, 10);
-
-  // Load sustainability data
-  loadSustainabilityData(productInfo);
-}
-
-function extractProductInfo(element: HTMLElement): ProductInfo {
-  const titleElement = element.querySelector('h1, h2, h3, h4, [class*="title"], [class*="name"]') as HTMLElement;
-  const priceElement = element.querySelector('[class*="price"], .price') as HTMLElement;
-  const imageElement = element.querySelector("img") as HTMLImageElement;
-
-  return {
-    name: titleElement ? titleElement.textContent?.trim() || "Unknown Product" : "Unknown Product",
-    price: priceElement ? priceElement.textContent?.trim() || "" : "",
-    image: imageElement ? imageElement.src : "",
-    url: window.location.href,
-  };
-}
-
-function createSustainabilityWidget(productInfo: ProductInfo): HTMLElement {
-  const widget = document.createElement("div");
-  widget.className = "eco-sustainability-widget";
-  widget.innerHTML = `
-    <div class="eco-widget-content">
-      <div class="eco-header">
-        <div class="eco-logo">🌱</div>
-        <div class="eco-title">EcoCart</div>
-        <div class="eco-loading">
-          <div class="eco-spinner"></div>
-        </div>
-      </div>
-      
-      <div class="eco-compact-view">
-        <div class="eco-score-circle">
-          <div class="eco-score-value">--</div>
-          <div class="eco-score-label">Eco Score</div>
-        </div>
-        <div class="eco-quick-info">
-          <div class="eco-quick-item">
-            <span class="eco-icon">🌍</span>
-            <span class="eco-value">--</span>
-          </div>
-          <div class="eco-quick-item">
-            <span class="eco-icon">💧</span>
-            <span class="eco-value">--</span>
-          </div>
-        </div>
-        <button class="eco-expand-btn">
-          <span>More Details</span>
-          <span class="eco-expand-icon">▼</span>
-        </button>
-      </div>
-      
-      <div class="eco-expanded-view">
-        <div class="eco-metrics">
-          <div class="eco-metric">
-            <div class="eco-metric-header">
-              <span class="eco-metric-icon">🌍</span>
-              <span class="eco-metric-title">Carbon Footprint</span>
-            </div>
-            <div class="eco-metric-value">-- kg CO₂</div>
-            <div class="eco-metric-bar">
-              <div class="eco-metric-fill carbon"></div>
-            </div>
-          </div>
-          
-          <div class="eco-metric">
-            <div class="eco-metric-header">
-              <span class="eco-metric-icon">💧</span>
-              <span class="eco-metric-title">Water Usage</span>
-            </div>
-            <div class="eco-metric-value">--</div>
-            <div class="eco-metric-bar">
-              <div class="eco-metric-fill water"></div>
-            </div>
-          </div>
-          
-          <div class="eco-metric">
-            <div class="eco-metric-header">
-              <span class="eco-metric-icon">♻️</span>
-              <span class="eco-metric-title">Recyclable Content</span>
-            </div>
-            <div class="eco-metric-value">--%</div>
-            <div class="eco-metric-bar">
-              <div class="eco-metric-fill recyclable"></div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="eco-certifications">
-          <div class="eco-cert-title">Certifications</div>
-          <div class="eco-cert-list"></div>
-        </div>
-        
-        <div class="eco-alternatives">
-          <div class="eco-alt-title">🌿 Better Alternatives</div>
-          <div class="eco-alt-list"></div>
-        </div>
+    function createSustainabilityWidget(): HTMLElement {
+        const widget = document.createElement("div");
+        widget.className = "eco-sustainability-widget";
+        widget.innerHTML = `
+    <div class="eco-widget">
+      <div class="eco-earth-text">Click to learn more</div>
+      <img class="eco-earth-img" src="" alt="Happy Earth" />
+      <div class="eco-score-item">
+        <span class="eco-icon">🌍</span>
+        <span class="eco-score-value eco-carbon-value">--</span>
+        <span class="eco-score-label">kg CO₂</span>
       </div>
     </div>
-  `;
-
-  // Add expand/collapse functionality
-  const expandBtn = widget.querySelector(".eco-expand-btn") as HTMLButtonElement;
-  const expandIcon = widget.querySelector(".eco-expand-icon") as HTMLElement;
-
-  expandBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const isExpanded = widget.classList.contains("eco-expanded");
-
-    if (isExpanded) {
-      widget.classList.remove("eco-expanded");
-      expandIcon.textContent = "▼";
-      (expandBtn.querySelector("span") as HTMLElement).textContent = "More Details";
-    } else {
-      widget.classList.add("eco-expanded");
-      expandIcon.textContent = "▲";
-      (expandBtn.querySelector("span") as HTMLElement).textContent = "Less Details";
+    `;
+        return widget;
     }
-  });
 
-  // Prevent widget from closing when clicking inside
-  widget.addEventListener("mouseenter", () => {
-    clearTimeout((widget as any).hideTimeout);
-  });
+    async function loadSustainabilityData(): Promise<void> {
+        try {
+            const productInfo = extractProductInfo();
+            console.log("PRODYUCT INFO:", productInfo);
+            if (!productInfo) return;
+            const brand = productInfo.brand;
+            try {
+                const weightsUrl = chrome.runtime.getURL("weights.json");
+                const weightsResponse = await fetch(weightsUrl);
+                if (!weightsResponse.ok)
+                    throw new Error(
+                        `Failed to fetch weights.json: ${weightsResponse.status} ${weightsResponse.statusText}`,
+                    );
+                const weightsData = await weightsResponse.json();
 
-  widget.addEventListener("mouseleave", () => {
-    (widget as any).hideTimeout = setTimeout(() => {
-      hideSustainabilityWidget();
-    }, 300);
-  });
+                const ratingsData = await fetch(
+                    chrome.runtime.getURL("ratings.json"),
+                ).then((res) => res.json());
 
-  return widget;
+                const rawName = productInfo.name.toLowerCase();
+                const weightKeys = Object.keys(weightsData).map((k) => k.toLowerCase());
+                const matchedKey = weightKeys.find((key) => rawName.includes(key));
+                const finalKey = matchedKey
+                    ? Object.keys(weightsData).find((k) => k.toLowerCase() === matchedKey)
+                    : null;
+                const true_weight = weightsData[finalKey || ""] || 0.5;
+
+                const productData = {
+                    name: productInfo.name,
+                    weight: true_weight,
+                    brand: brand,
+                };
+                const carbonFootprint = await calculateCarbonFootprint(productData);
+                const brandLink = `https://${brand}/`;
+                const stats = ratingsData[brandLink];
+                console.log("Brand stats:", stats);
+                // Update widget
+                if (sustainabilityWidget) {
+                    const earthImg = sustainabilityWidget.querySelector(
+                        ".eco-earth-img",
+                    ) as HTMLImageElement;
+                    const carbonValue = sustainabilityWidget.querySelector(
+                        ".eco-carbon-value",
+                    ) as HTMLDivElement;
+                    if (carbonValue) carbonValue.textContent = carbonFootprint.toFixed(2);
+                    if (earthImg) {
+                        const happyEarth = chrome.runtime.getURL("happy_earth.png");
+                        const sadEarth = chrome.runtime.getURL("sad_earth.png");
+                        if (stats?.overall >= 4) {
+                            earthImg.src = happyEarth;
+                            earthImg.alt = "Happy Earth";
+                        } else {
+                            earthImg.src = sadEarth;
+                            earthImg.alt = "Sad Earth";
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching weights.json:", error);
+                throw error;
+            }
+        } catch (error) {
+            console.error("Error loading sustainability data:", error);
+        }
+    }
+
+    function extractProductInfo(): ProductInfo | null {
+        try {
+            // Find the product container
+            const productContainer = document.querySelector(
+                "[class*=product][class*=name], [class*=product][class*=title], [id*=product][id*=name], [id*=product][id*=title], [data-auto-id*=product][data-auto-id*=title], [data-auto-id*=product][data-auto-id*=name]",
+            );
+            console.log("Found product container:", productContainer);
+
+            if (!productContainer) {
+                console.error("Could not find product container");
+                return null;
+            }
+
+            // Extract product information
+            const titleElement = document.querySelector(
+                "[class*=product][class*=name], [class*=product][class*=title], [id*=product][id*=name], [id*=product][id*=title], [data-auto-id*=product][data-auto-id*=title], [data-auto-id*=product][data-auto-id*=name]",
+            );
+            const priceElement = productContainer.querySelector(
+                '[class*="price"], .price',
+            );
+            const imageElement = productContainer.querySelector("img");
+
+            const apiKey = import.meta.env.VITE_API_KEY;
+            // console.log("Found elements:", {
+            //   title: titleElement,
+            //   price: priceElement?.textContent,
+            //   image: imageElement?.src,
+            // });
+
+            const rawName =
+                titleElement?.textContent?.trim().toLowerCase() || "Unknown Product";
+            const productPrice = priceElement?.textContent?.trim() || "";
+            const productImage = imageElement?.src || "";
+            const productUrl = window.location.href;
+
+            // Extract brand from URL
+            const hostname = new URL(productUrl).hostname;
+            const parts = hostname.split(".").filter(Boolean);
+            const productBrand =
+                parts.length >= 2 ? parts[parts.length - 2] : hostname;
+
+            console.log("Extracted brand from URL:", productBrand);
+
+            return {
+                name: rawName,
+                price: productPrice,
+                image: productImage,
+                url: productUrl,
+                brand: productBrand,
+            };
+        } catch (error) {
+            console.error("Error extracting product info:", error);
+            return null;
+        }
+    }
+
+    function sendToOpenAI(prompt: string): void {
+        // Retrieve API key from environment variable or configuration
+        const apikey = import.meta.env.VITE_API_KEY;
+        fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${apikey}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                model: "gpt-4",
+                messages: [
+                    { role: "system", content: "You are a sustainability analyst." },
+                    { role: "user", content: prompt },
+                ],
+                temperature: 0.7,
+            }),
+        })
+            .then((res: Response) => res.json())
+            .then((data: any) => {
+                const reply = data.choices?.[0]?.message?.content;
+                console.log("🌍 OpenAI response:", reply);
+                renderPopupTable(reply || "No data returned");
+            })
+            .catch((err: unknown) => console.error("❌ OpenAI Error:", err));
+    }
+
+    let currentPopup: HTMLElement | null = null;
+
+    function togglePopup(): void {
+        // If popup is open, remove it
+        if (currentPopup) {
+            currentPopup.remove();
+            currentPopup = null;
+            return;
+        }
+
+        // Create popup container
+        const popup = document.createElement("div");
+        popup.className = "eco-popup";
+        popup.id = "eco-popup";
+        popup.style.position = "fixed";
+        popup.style.bottom = "110px";
+        popup.style.right = "32px";
+        popup.style.zIndex = "10000";
+        popup.style.background = "#fff";
+        popup.style.border = "1px solid #ddd";
+        popup.style.borderRadius = "12px";
+        popup.style.boxShadow = "0 4px 16px rgba(0,0,0,0.15)";
+        popup.style.padding = "24px 20px 20px 20px";
+        popup.style.minWidth = "320px";
+        popup.style.maxWidth = "400px";
+        popup.style.fontFamily = "inherit";
+
+        const closeBtn = document.createElement("button");
+        closeBtn.textContent = "×";
+        closeBtn.style.position = "absolute";
+        closeBtn.style.top = "8px";
+        closeBtn.style.right = "12px";
+        closeBtn.style.background = "none";
+        closeBtn.style.border = "none";
+        closeBtn.style.fontSize = "1.5rem";
+        closeBtn.style.cursor = "pointer";
+        closeBtn.onclick = () => {
+            popup.remove();
+            currentPopup = null;
+        };
+        popup.appendChild(closeBtn);
+
+        const placeholder = document.createElement("div");
+        placeholder.id = "eco-popup-content";
+        placeholder.innerHTML = "<em>Loading sustainability analysis...</em>";
+        popup.appendChild(placeholder);
+
+        document.body.appendChild(popup);
+        currentPopup = popup;
+
+        const productInfo = extractProductInfo();
+        if (!productInfo) {
+            placeholder.innerHTML = "❌ Could not extract product info.";
+            return;
+        }
+        const prompt = `Using information found at this URL: ${productInfo.url}, extract the product name, brand, and material. Then, evaluate the product's sustainability in four categories:
+
+Material (e.g. natural, recycled, toxic, biodegradable)
+
+Production (e.g. ethical sourcing, labor, water usage, emissions)
+
+Durability (e.g. long-lasting, disposable, wear resistance)
+
+End-of-life (e.g. recyclable, compostable, landfill)
+
+For each category, please have one word rating it poor/moderate/good, 1-2 lines of insights on why based on credible sources <35 words, and one actionable tip for the user <20 words.
+I want it in this format: 
+Material:
+- Verdict:
+- Insight:
+- Tip:`;
+        console.log("🌍 Sending prompt to OpenAI:", prompt);
+        sendToOpenAI(prompt);
+    }
 }
+function renderPopupTable(response: string): void {
+    const container = document.getElementById("eco-popup-content");
+    if (!container) return;
+    container.innerHTML = "";
 
-function loadSustainabilityData(productInfo: ProductInfo): void {
-  chrome.runtime.sendMessage(
-    {
-      action: "getSustainabilityData",
-      productInfo: productInfo,
-    },
-    (response: SustainabilityData) => {
-      if (response && sustainabilityWidget) {
-        updateWidgetWithData(response);
+    // Add style once
+    if (!document.getElementById("eco-popup-style")) {
+        const style = document.createElement("style");
+        style.id = "eco-popup-style";
+        style.textContent = `
+      .eco-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        min-height: 250px;
+        transition: all 0.3s ease;
       }
-    },
-  );
-}
 
-function updateWidgetWithData(data: SustainabilityData): void {
-  if (!sustainabilityWidget) return;
-
-  // Hide loading
-  const loadingElement = sustainabilityWidget.querySelector(".eco-loading") as HTMLElement;
-  if (loadingElement) {
-    loadingElement.style.display = "none";
-  }
-
-  // Update score
-  const scoreValue = sustainabilityWidget.querySelector(".eco-score-value") as HTMLElement;
-  const scoreCircle = sustainabilityWidget.querySelector(".eco-score-circle") as HTMLElement;
-  if (scoreValue) {
-    scoreValue.textContent = data.sustainabilityScore.toString();
-  }
-
-  // Color code the score
-  if (scoreCircle) {
-    if (data.sustainabilityScore >= 80) {
-      scoreCircle.classList.add("eco-score-excellent");
-    } else if (data.sustainabilityScore >= 60) {
-      scoreCircle.classList.add("eco-score-good");
-    } else {
-      scoreCircle.classList.add("eco-score-poor");
-    }
-  }
-
-  // Update quick info
-  const quickItems = sustainabilityWidget.querySelectorAll(".eco-quick-item .eco-value");
-  if (quickItems[0]) (quickItems[0] as HTMLElement).textContent = data.carbonFootprint + " kg";
-  if (quickItems[1]) (quickItems[1] as HTMLElement).textContent = data.waterUsage;
-
-  // Update detailed metrics
-  const metrics = sustainabilityWidget.querySelectorAll(".eco-metric");
-
-  // Carbon footprint
-  if (metrics[0]) {
-    const valueEl = metrics[0].querySelector(".eco-metric-value") as HTMLElement;
-    const fillEl = metrics[0].querySelector(".eco-metric-fill") as HTMLElement;
-    if (valueEl) valueEl.textContent = data.carbonFootprint + " kg CO₂";
-    if (fillEl) {
-      const carbonPercent = Math.max(0, 100 - (data.carbonFootprint / 20) * 100);
-      fillEl.style.width = carbonPercent + "%";
-    }
-  }
-
-  // Water usage
-  if (metrics[1]) {
-    const valueEl = metrics[1].querySelector(".eco-metric-value") as HTMLElement;
-    const fillEl = metrics[1].querySelector(".eco-metric-fill") as HTMLElement;
-    if (valueEl) valueEl.textContent = data.waterUsage;
-    if (fillEl) {
-      const waterPercent = data.waterUsage === "Low" ? 80 : data.waterUsage === "Medium" ? 50 : 20;
-      fillEl.style.width = waterPercent + "%";
-    }
-  }
-
-  // Recyclable content
-  if (metrics[2]) {
-    const valueEl = metrics[2].querySelector(".eco-metric-value") as HTMLElement;
-    const fillEl = metrics[2].querySelector(".eco-metric-fill") as HTMLElement;
-    if (valueEl) valueEl.textContent = data.recyclableContent + "%";
-    if (fillEl) fillEl.style.width = data.recyclableContent + "%";
-  }
-
-  // Update certifications
-  const certList = sustainabilityWidget.querySelector(".eco-cert-list") as HTMLElement;
-  if (certList) {
-    if (data.certifications.length > 0) {
-      certList.innerHTML = data.certifications.map((cert) => `<span class="eco-cert-badge">${cert}</span>`).join("");
-    } else {
-      certList.innerHTML = '<span class="eco-no-certs">No certifications found</span>';
-    }
-  }
-
-  // Update alternatives
-  const altList = sustainabilityWidget.querySelector(".eco-alt-list") as HTMLElement;
-  const altSection = sustainabilityWidget.querySelector(".eco-alternatives") as HTMLElement;
-  if (altList && altSection) {
-    if (data.alternatives.length > 0) {
-      altList.innerHTML = data.alternatives
-        .map(
-          (alt) => `
-        <div class="eco-alternative">
-          <div class="eco-alt-header">
-            <span class="eco-alt-name">${alt.name}</span>
-            <span class="eco-alt-score">${alt.score}/100</span>
-          </div>
-          <div class="eco-alt-details">
-            <span class="eco-alt-brand">${alt.brand}</span>
-            <span class="eco-alt-price">${alt.price}</span>
-          </div>
-          <div class="eco-alt-savings">${alt.savings}</div>
-        </div>
-      `,
-        )
-        .join("");
-    } else {
-      altSection.style.display = "none";
-    }
-  }
-
-  // Update stats
-  updateStats();
-}
-
-function updateStats(): void {
-  chrome.storage.local.get(["stats"], (result) => {
-    const stats = result.stats || { analyzed: 0, co2Saved: 0, ecoChoices: 0 };
-    stats.analyzed += 1;
-    stats.co2Saved += Math.random() * 2; // Mock CO2 savings
-    chrome.storage.local.set({ stats });
-  });
-}
-
-function hideSustainabilityWidget(): void {
-  if (sustainabilityWidget) {
-    sustainabilityWidget.classList.remove("eco-widget-visible");
-    setTimeout(() => {
-      if (sustainabilityWidget && sustainabilityWidget.parentNode) {
-        sustainabilityWidget.parentNode.removeChild(sustainabilityWidget);
+      .eco-quadrant {
+        background: #e7f5e9;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        font-size: 14px;
+        border-radius: 12px;
+        cursor: pointer;
+        position: relative;
+        transition: all 0.3s ease;
       }
-      sustainabilityWidget = null;
-    }, 300);
-  }
-}
 
-function removeSustainabilityTracker(): void {
-  hideSustainabilityWidget();
-}
+      .eco-expanded {
+        grid-column: 1 / span 2;
+        grid-row: 1 / span 2;
+        z-index: 1;
+        position: relative;
+      }
 
+      .eco-close-btn {
+        position: absolute;
+        top: 8px;
+        right: 12px;
+        background: white;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        z-index: 10;
+        color: #222;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        line-height: 30px;
+        text-align: center;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      }
+    `;
+        document.head.appendChild(style);
+    }
+
+    // Header + earth image
+    const heading = document.createElement("h3");
+    heading.textContent = "Find out more!";
+    heading.style.textAlign = "center";
+    heading.style.marginBottom = "10px";
+    heading.style.fontSize = "1.2rem";
+    heading.style.fontWeight = "bold";
+
+    const earthImg = document.createElement("img");
+    earthImg.src = chrome.runtime.getURL("sad_earth.png");
+    earthImg.alt = "Earth";
+    earthImg.style.width = "80px";
+    earthImg.style.display = "block";
+    earthImg.style.margin = "0 auto 10px auto";
+
+    container.appendChild(heading);
+    container.appendChild(earthImg);
+
+    const grid = document.createElement("div");
+    grid.className = "eco-grid";
+
+    const categories = [
+        { label: "Material", icon: "♻️" },
+        { label: "Production", icon: "🏭" },
+        { label: "Durability", icon: "🧱" },
+        { label: "End-of-life", icon: "🪦" },
+    ];
+
+    categories.forEach(({ label, icon }) => {
+        const cell = document.createElement("div");
+
+        // Robust regex to get: Verdict, Insight, Tip for each label
+        // Robust full block extraction for this label:
+        const regex = new RegExp(
+            `${label}:\\s*[-–]\\s*Verdict:\\s*(.*?)\\s*[-–]\\s*Insight:\\s*([\\s\\S]*?)\\s*[-–]\\s*Tip:\\s*([\\s\\S]*?)(?=\\n[A-Z][a-zA-Z\\s-]*:|$)`,
+            "i",
+        );
+        const match = response.match(regex);
+
+        let verdict = "Unknown",
+            insight = "No info",
+            tip = "No tip";
+        if (match) {
+            verdict = match[1].trim();
+            insight = match[2].trim();
+            tip = match[3].trim();
+        }
+
+        // Compact view for the quadrant
+        cell.className = "eco-quadrant";
+        cell.innerHTML = `
+      <div style="font-size: 1.5rem">${icon}</div>
+      <div style="margin-top: 6px; font-weight: 600;">${label}</div>
+    `;
+
+        // Click → expand with formatted content
+        cell.addEventListener("click", () => {
+            const all = grid.querySelectorAll(".eco-quadrant");
+            all.forEach((q) => {
+                if (q !== cell) (q as HTMLElement).style.display = "none";
+            });
+
+            cell.classList.add("eco-expanded");
+            cell.style.position = "relative";
+            cell.innerHTML = `
+        <button class="eco-close-btn">×</button>
+        <div style="font-size: 2rem; text-align:center; margin-top: 10px;">${icon}</div>
+        <h3 style="text-align:center; margin: 10px 0;">${label}</h3>
+        <p style="text-align:center; font-weight:bold;">Verdict: ${verdict}</p>
+        <p style="text-align:left; margin-top: 10px;"><strong>Insight:</strong><br>${insight}</p>
+        <p style="text-align:left; margin-top: 10px;"><strong>Tip:</strong><br>${tip}</p>
+      `;
+
+            const close = cell.querySelector(".eco-close-btn") as HTMLButtonElement;
+            close.onclick = () => renderPopupTable(response);
+        });
+
+        grid.appendChild(cell);
+    });
+
+    container.appendChild(grid);
+}

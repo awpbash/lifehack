@@ -1,4 +1,3 @@
-// src/pages/Alternatives.tsx
 import React, { useEffect, useState } from "react";
 import "./alternatives.css";
 
@@ -8,25 +7,28 @@ interface ProductResult {
   brand: string;
 }
 
-const Alternatives = () => {
-  const [query, setQuery] = useState("eco friendly dress");
+interface AlternativesProps {
+  defaultQuery: string;
+}
+
+const Alternatives: React.FC<AlternativesProps> = ({ defaultQuery }) => {
+  const [query, setQuery] = useState<string>(defaultQuery || "");
   const [results, setResults] = useState<ProductResult[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const bingImageSearch = async (query: string, limit = 5) => {
-      try {
-        const encoded = encodeURIComponent("buy " + query);
-        const res = await fetch(`https://www.bing.com/images/search?q=${encoded}&form=HDRSC2`, {
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
-          }
-        });
+    setQuery(defaultQuery);  // Update if defaultQuery changes
+  }, [defaultQuery]);
 
+  useEffect(() => {
+    const bingImageSearch = async (q: string, limit = 5) => {
+      if (!q || q.length < 3) return;
+      setLoading(true);
+      try {
+        const encoded = encodeURIComponent("buy " + q);
+        const res = await fetch(`https://www.bing.com/images/search?q=${encoded}&form=HDRSC2`);
         const html = await res.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, "text/html");
+        const doc = new DOMParser().parseFromString(html, "text/html");
         const anchors = doc.querySelectorAll("a.iusc");
 
         const data: ProductResult[] = [];
@@ -40,19 +42,17 @@ const Alternatives = () => {
               data.push({ image: m.murl, source: m.purl, brand });
               if (data.length >= limit) break;
             }
-          } catch (e) {
-            continue;
-          }
+          } catch {}
         }
         setResults(data);
-      } catch (e) {
-        console.error("Failed to fetch images", e);
+      } catch (err) {
+        console.error("❌ Bing fetch failed:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    bingImageSearch(query);
+    if (query) bingImageSearch(query);
   }, [query]);
 
   return (
@@ -60,18 +60,15 @@ const Alternatives = () => {
       <h2>🛍️ Sustainable Alternatives</h2>
       <input
         type="text"
-        placeholder="Enter product name..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         className="alt-search"
       />
-      {loading ? (
-        <p>Loading...</p>
-      ) : (
+      {loading ? <p>Loading...</p> : (
         <div className="alt-results-scroll">
           {results.map((item, i) => (
             <a href={item.source} target="_blank" key={i} className="alt-item">
-              <img src={item.image} alt="alternative" className="alt-img" />
+              <img src={item.image} alt="alt" className="alt-img" />
               <div className="alt-brand">{item.brand}</div>
             </a>
           ))}

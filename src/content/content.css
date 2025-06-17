@@ -1,373 +1,112 @@
-.eco-sustainability-widget {
-  position: absolute;
-  z-index: 10000;
-  background: white;
-  border-radius: 100px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 14px;
-  width: 280px;
-  opacity: 0;
-  transform: translateY(10px);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  backdrop-filter: blur(10px);
-  overflow: hidden;
-}
-
-.eco-sustainability-widget.eco-widget-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.eco-sustainability-widget.eco-expanded {
-  width: 320px;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
 
 .eco-widget-content {
-  padding: 16px;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .eco-header {
   display: flex;
   align-items: center;
-  margin-bottom: 12px;
-  position: relative;
+  gap: 10px;
 }
 
+.eco-earth-text {
+  margin-top: 6px;
+  font-size: 20px;
+  color: #4b5563;
+  text-align: center;
+}
+
+
 .eco-logo {
-  font-size: 18px;
-  margin-right: 8px;
+  font-size: 24px;
 }
 
 .eco-title {
-  font-weight: 600;
-  color: #1f2937;
-  flex: 1;
-}
-
-.eco-loading {
-  position: absolute;
-  right: 0;
-}
-
-.eco-spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid #e5e7eb;
-  border-top: 2px solid #10b981;
-  border-radius: 50%;
-  animation: eco-spin 1s linear infinite;
-}
-
-@keyframes eco-spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.eco-compact-view {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.eco-score-circle {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: conic-gradient(from 0deg, #ef4444 0deg, #f59e0b 120deg, #10b981 240deg, #10b981 360deg);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  flex-shrink: 0;
-}
-
-.eco-score-circle::before {
-  content: "";
-  position: absolute;
-  width: 48px;
-  height: 48px;
-  background: white;
-  border-radius: 50%;
-}
-
-.eco-score-value {
-  font-weight: 700;
+  font-weight: bold;
   font-size: 16px;
   color: #1f2937;
-  position: relative;
-  z-index: 1;
 }
 
-.eco-score-label {
-  font-size: 10px;
-  color: #6b7280;
-  position: relative;
-  z-index: 1;
-}
-
-.eco-score-excellent {
-  background: conic-gradient(from 0deg, #10b981 0deg, #10b981 360deg);
-}
-
-.eco-score-good {
-  background: conic-gradient(from 0deg, #f59e0b 0deg, #f59e0b 360deg);
-}
-
-.eco-score-poor {
-  background: conic-gradient(from 0deg, #ef4444 0deg, #ef4444 360deg);
-}
-
-.eco-quick-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.eco-quick-item {
+.eco-score {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 8px;
+  gap: 15px;
+}
+
+.eco-score-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 12px;
   background: #f9fafb;
-  border-radius: 6px;
+  border-radius: 9px;
+}
+
+.eco-widget {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #f9fafb;
+  border-radius: 10px;
 }
 
 .eco-icon {
-  font-size: 16px;
+  font-size: 24px;
 }
 
-.eco-value {
-  font-weight: 500;
+.eco-score-value {
+  font-weight: bold;
   color: #374151;
-  font-size: 12px;
 }
 
-.eco-expand-btn {
-  background: #10b981;
-  color: white;
+.eco-score-label {
+  color: #6b7280;
+  font-size: 18px;
+}
+
+.eco-close-btn {
+  background: none;
   border: none;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 500;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-
-.eco-expand-btn:hover {
-  background: #059669;
-  transform: translateY(-1px);
-}
-
-.eco-expand-icon {
-  font-size: 10px;
-  transition: transform 0.3s;
-}
-
-.eco-expanded-view {
-  max-height: 0;
-  overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  opacity: 0;
-}
-
-.eco-sustainability-widget.eco-expanded .eco-expanded-view {
-  max-height: 500px;
-  opacity: 1;
-  margin-top: 16px;
-}
-
-.eco-metrics {
-  margin-bottom: 16px;
-}
-
-.eco-metric {
-  margin-bottom: 12px;
-  padding: 12px;
-  background: #f9fafb;
-  border-radius: 8px;
-}
-
-.eco-metric:last-child {
-  margin-bottom: 0;
-}
-
-.eco-metric-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.eco-metric-icon {
-  font-size: 16px;
-}
-
-.eco-metric-title {
-  font-weight: 500;
-  color: #374151;
-  font-size: 13px;
-}
-
-.eco-metric-value {
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 6px;
-  font-size: 14px;
-}
-
-.eco-metric-bar {
-  height: 4px;
-  background: #e5e7eb;
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.eco-metric-fill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.6s ease-out;
-}
-
-.eco-metric-fill.carbon {
-  background: linear-gradient(90deg, #ef4444, #10b981);
-}
-
-.eco-metric-fill.water {
-  background: linear-gradient(90deg, #3b82f6, #06b6d4);
-}
-
-.eco-metric-fill.recyclable {
-  background: linear-gradient(90deg, #8b5cf6, #10b981);
-}
-
-.eco-certifications {
-  margin-bottom: 16px;
-}
-
-.eco-cert-title {
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 8px;
-  font-size: 13px;
-}
-
-.eco-cert-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.eco-cert-badge {
-  background: #10b981;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.eco-no-certs {
+  font-size: 24px;
+  padding: 8px;
   color: #6b7280;
-  font-size: 12px;
-  font-style: italic;
+  transition: color 0.2s;
+  padding: 0px;
 }
 
-.eco-alternatives {
-  border-top: 1px solid #e5e7eb;
-  padding-top: 12px;
-}
-
-.eco-alt-title {
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 8px;
-  font-size: 13px;
-}
-
-.eco-alternative {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  border-radius: 8px;
-  padding: 10px;
-  margin-bottom: 8px;
-  transition: all 0.2s;
-}
-
-.eco-alternative:hover {
-  background: #dcfce7;
-  transform: translateY(-1px);
-  cursor: pointer;
-}
-
-.eco-alternative:last-child {
-  margin-bottom: 0;
-}
-
-.eco-alt-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-.eco-alt-name {
-  font-weight: 500;
+.eco-close-btn:hover {
   color: #1f2937;
-  font-size: 13px;
 }
 
-.eco-alt-score {
-  background: #10b981;
-  color: white;
-  padding: 2px 6px;
-  border-radius: 10px;
-  font-size: 10px;
-  font-weight: 600;
+.eco-grid div:hover {
+  background-color: #d3f0d9;
+  transition: background-color 0.3s ease;
 }
-
-.eco-alt-details {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 4px;
-}
-
-.eco-alt-brand {
-  color: #6b7280;
-  font-size: 12px;
-}
-
-.eco-alt-price {
-  font-weight: 600;
-  color: #1f2937;
-  font-size: 12px;
-}
-
-.eco-alt-savings {
-  color: #059669;
-  font-size: 11px;
-  font-weight: 500;
+.eco-quadrant:hover {
+  background-color: #d3f0d9;
+  transition: background-color 0.3s ease;
 }
 
 @media (max-width: 768px) {
   .eco-sustainability-widget {
-    width: 260px;
+    padding: 8px 12px;
   }
-
-  .eco-sustainability-widget.eco-expanded {
-    width: 300px;
+  
+  .eco-title {
+    font-size: 14px;
+  }
+  
+  .eco-score {
+    gap: 8px;
+  }
+  
+  .eco-score-item {
+    padding: 3px 6px;
   }
 }

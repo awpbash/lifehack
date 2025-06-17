@@ -7,19 +7,25 @@
     "default_popup": "popup.html",
     "default_icon": "icon.png"
   },
-  "permissions": ["activeTab", "scripting", "storage"],
+  "permissions": ["activeTab", "scripting", "storage", "webNavigation"],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "exclude_matches": [
+      "https://chrome.google.com/*",
+      "https://platform.openai.com/settings/*"
+    ]
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["alternatives.html"],
+      "resources": ["weights.json", "locations.json", "ratings.json",  
+      "carbonIntensity.json", "happy_earth.png", "sad_earth.png"],
       "matches": ["<all_urls>"]
     }
   ],

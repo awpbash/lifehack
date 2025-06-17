@@ -70,7 +70,17 @@ function App() {
     const newEnabled = !isEnabled;
     setIsEnabled(newEnabled);
     chrome.storage.local.set({ enabled: newEnabled });
+        chrome.tabs.query({ 
+        active: true, 
+        currentWindow: true 
+    }, function(tabs) {
+      chrome.tabs.sendMessage(tabs[0].id as number, {
+        action: "toggle",
+        enabled: newEnabled
+      });
+    });
   };
+  
 
   const getRatingColor = (rating: number): string => {
     switch (rating) {
@@ -82,6 +92,9 @@ function App() {
       default: return "#bdbdbd";
     }
   };
+
+  const [productName, setProductName] = useState<string>("eco friendly dress");
+
 
   return (
     <div className="container">
@@ -139,14 +152,42 @@ function App() {
           🌐 Brand Info
         </a>
         <button
-          className="action-button"
-          onClick={() => setShowAlternatives(!showAlternatives)}
-        >
-          🛍️ Sustainable Alternatives
-        </button>
+  className="action-button"
+  onClick={() => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const tabId = tabs[0]?.id;
+      if (!tabId) return;
+
+      chrome.scripting.executeScript(
+        {
+          target: { tabId },
+          func: () => {
+            const el = document.querySelector(
+              '[class*=product][class*=name], [class*=product][class*=title], ' +
+              '[id*=product][id*=name], [id*=product][id*=title], ' +
+              '[data-auto-id*=product][data-auto-id*=title], [data-auto-id*=product][data-auto-id*=name]'
+            );
+            return el?.textContent?.trim() || "";
+          }
+        },
+        (injectionResults) => {
+          const title = injectionResults?.[0]?.result;
+          if (title && title.length > 3) {
+            setProductName("eco friendly " + title);
+          } else {
+            setProductName("eco friendly dress");
+          }
+          setShowAlternatives(true);
+        }
+      );
+    });
+  }}
+>
+  🛍️ Sustainable Alternatives
+</button>
       </div>
 
-      {showAlternatives && <Alternatives />}
+      {showAlternatives && <Alternatives defaultQuery={productName} />}
 
       <footer>
         <a
