@@ -114,4 +114,3 @@ EcoCart will overlay sustainability ratings, summaries, and recommendations on p
 # 🎥 Demo Video
 
 👉 Watch our demo (10 min)
-
