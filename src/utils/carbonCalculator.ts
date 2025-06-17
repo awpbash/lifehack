@@ -44,19 +44,20 @@ export async function calculateCarbonFootprint(productData: ProductData): Promis
 
       // Get the brand's location from locations.json
       const location = locationsData[productData.brand];
+      console.log('WOWOWOOW', productData)
       console.log('Found location for brand:', location);
       
-      if (!location) {
-        throw new Error(`No location data found for brand: ${productData.brand}`);
-      }
+      // if (!location) {
+      //   throw new Error(`No location data found for brand: ${productData.brand}`);
+      // }
 
       // Get the location's carbon intensity from carbonIntensity.json
       const carbonIntensity = carbonIntensityData[location];
       console.log('Found carbon intensity:', carbonIntensity);
       
-      if (!carbonIntensity) {
-        throw new Error(`No carbon intensity data found for location: ${location}`);
-      }
+      // if (!carbonIntensity) {
+      //   throw new Error(`No carbon intensity data found for location: ${location}`);
+      // }
 
       // Calculate carbon footprint
       // Formula: weight (kg) * energy per kg (kWh/kg) * carbon intensity (gCO2/kWh)
