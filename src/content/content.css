@@ -78,6 +78,7 @@
   padding: 8px;
   color: #6b7280;
   transition: color 0.2s;
+  padding: 0px;
 }
 
 .eco-close-btn:hover {
