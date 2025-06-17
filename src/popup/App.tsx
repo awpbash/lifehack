@@ -70,6 +70,15 @@ function App() {
     const newEnabled = !isEnabled;
     setIsEnabled(newEnabled);
     chrome.storage.local.set({ enabled: newEnabled });
+        chrome.tabs.query({ 
+        active: true, 
+        currentWindow: true 
+    }, function(tabs) {
+      chrome.tabs.sendMessage(tabs[0].id as number, {
+        action: "toggle",
+        enabled: newEnabled
+      });
+    });
   };
   
 

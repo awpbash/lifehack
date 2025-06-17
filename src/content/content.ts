@@ -1,6 +1,6 @@
 /// <reference types="chrome"/>
-import './content.css';
-import { calculateCarbonFootprint } from '../utils/carbonCalculator';
+import "./content.css";
+import { calculateCarbonFootprint } from "../utils/carbonCalculator";
 
 interface ProductInfo {
   name: string;
@@ -30,22 +30,61 @@ interface Alternative {
 let isEnabled = true;
 let sustainabilityWidget: HTMLElement | null = null;
 
+let currentUrl = window.location.href;
+let urlCheckInterval: NodeJS.Timeout | null = null;
+
+function startUrlMonitoring(): void {
+  if (urlCheckInterval) return;
+  
+  urlCheckInterval = setInterval(() => {
+    if (window.location.href !== currentUrl) {
+      console.log('🔄 URL changed from', currentUrl, 'to', window.location.href);
+      currentUrl = window.location.href;
+      
+      setTimeout(() => {
+        if (isEnabled) {
+          initializeSustainabilityTracker();
+        }
+      }, 1000);
+    }
+  }, 500);
+}
+
+function stopUrlMonitoring(): void {
+  if (urlCheckInterval) {
+    clearInterval(urlCheckInterval);
+    urlCheckInterval = null;
+  }
+}
+
 // Initialize
 chrome.storage.local.get(["enabled"], (result) => {
   isEnabled = result.enabled !== false;
   if (isEnabled) {
     initializeSustainabilityTracker();
+    startUrlMonitoring(); // ADD THIS LINE
   }
 });
 
+function removeSustainabilityTracker(): void {
+  console.log(sustainabilityWidget);
+  if (sustainabilityWidget) {
+    sustainabilityWidget.remove();
+    sustainabilityWidget = null;
+  }
+}
+
 // Listen for toggle messages
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log(request);
   if (request.action === "toggle") {
-    isEnabled = request.enabled;
+    isEnabled = request.enabled !== false;
     if (isEnabled) {
       initializeSustainabilityTracker();
+      startUrlMonitoring(); // ADD THIS LINE
     } else {
       removeSustainabilityTracker();
+      startUrlMonitoring(); // ADD THIS LINE
     }
   }
 });
@@ -54,9 +93,10 @@ function initializeSustainabilityTracker(): void {
   removeSustainabilityTracker();
 
   sustainabilityWidget = createSustainabilityWidget();
+  console.log(sustainabilityWidget);
   document.body.appendChild(sustainabilityWidget);
 
-  const style = document.createElement('style');
+  const style = document.createElement("style");
   style.textContent = `
     .eco-sustainability-widget {
       position: fixed;
@@ -85,25 +125,27 @@ function initializeSustainabilityTracker(): void {
   document.head.appendChild(style);
 
   // ✅ Set happy earth directly
-  const happyEarth = chrome.runtime.getURL('happy_earth.png');
-  const earthImg = sustainabilityWidget.querySelector('.eco-earth-img') as HTMLImageElement;
+  const happyEarth = chrome.runtime.getURL("happy_earth.png");
+  const earthImg = sustainabilityWidget.querySelector(
+    ".eco-earth-img",
+  ) as HTMLImageElement;
   // console.log('Happy Earth image URL:', happyEarth);
   // console.log('Earth image element:', earthImg);
   if (earthImg) {
     earthImg.src = happyEarth;
-    earthImg.alt = 'Happy Earth';
-    earthImg.addEventListener('click', () => {
-    console.log("🌍 Earth icon clicked");
-    togglePopup();
-  })
+    earthImg.alt = "Happy Earth";
+    earthImg.addEventListener("click", () => {
+      console.log("🌍 Earth icon clicked");
+      togglePopup();
+    });
 
-  loadSustainabilityData(); 
-}
+    loadSustainabilityData();
+  }
 
-function createSustainabilityWidget(): HTMLElement {
-  const widget = document.createElement("div");
-  widget.className = "eco-sustainability-widget";
-  widget.innerHTML = `
+  function createSustainabilityWidget(): HTMLElement {
+    const widget = document.createElement("div");
+    widget.className = "eco-sustainability-widget";
+    widget.innerHTML = `
     <div class="eco-widget">
       <div class="eco-earth-text">Click to learn more</div>
       <img class="eco-earth-img" src="" alt="Happy Earth" />
@@ -114,200 +156,215 @@ function createSustainabilityWidget(): HTMLElement {
       </div>
     </div>
     `;
-  return widget;
-}
+    return widget;
+  }
 
-async function loadSustainabilityData(): Promise<void> {
-  try {
-    const productInfo = extractProductInfo();
-    if (!productInfo) return;
-    const brand = productInfo.brand;
+  async function loadSustainabilityData(): Promise<void> {
     try {
-      const weightsUrl = chrome.runtime.getURL('weights.json');
-      const weightsResponse = await fetch(weightsUrl);
-      if (!weightsResponse.ok) throw new Error(`Failed to fetch weights.json: ${weightsResponse.status} ${weightsResponse.statusText}`);
-      const weightsData = await weightsResponse.json();
-      
-      const ratingsData = await fetch(chrome.runtime.getURL('ratings.json')).then(res => res.json());
+      const productInfo = extractProductInfo();
+      console.log("PRODYUCT INFO:", productInfo)
+      if (!productInfo) return;
+      const brand = productInfo.brand;
+      try {
+        const weightsUrl = chrome.runtime.getURL("weights.json");
+        const weightsResponse = await fetch(weightsUrl);
+        if (!weightsResponse.ok)
+          throw new Error(
+            `Failed to fetch weights.json: ${weightsResponse.status} ${weightsResponse.statusText}`,
+          );
+        const weightsData = await weightsResponse.json();
 
-      const rawName = productInfo.name.toLowerCase();
-      const weightKeys = Object.keys(weightsData).map(k => k.toLowerCase());
-      const matchedKey = weightKeys.find(key => rawName.includes(key));
-      const finalKey = matchedKey 
-        ? Object.keys(weightsData).find(k => k.toLowerCase() === matchedKey)
-        : null;
-      const true_weight = weightsData[finalKey || ""] || 0.5;
+        const ratingsData = await fetch(
+          chrome.runtime.getURL("ratings.json"),
+        ).then((res) => res.json());
 
-      const productData = { name: productInfo.name, weight: true_weight, brand: brand };
-      const carbonFootprint = await calculateCarbonFootprint(productData);
-      const brandLink = `https://${brand}/`;
-      const stats = ratingsData[brandLink];
-      console.log("Brand stats:", stats);
-      // Update widget
-      if (sustainabilityWidget) {
-        const earthImg = sustainabilityWidget.querySelector('.eco-earth-img') as HTMLImageElement;
-        const carbonValue = sustainabilityWidget.querySelector('.eco-carbon-value') as HTMLDivElement;
-        if (carbonValue) carbonValue.textContent = carbonFootprint.toFixed(2);
-        if (earthImg) {
-          const happyEarth = chrome.runtime.getURL('happy_earth.png');
-          const sadEarth = chrome.runtime.getURL('sad_earth.png');
-          if (stats?.overall >= 4) {
-            earthImg.src = happyEarth;
-            earthImg.alt = 'Happy Earth';
-          } else {
-            earthImg.src = sadEarth;
-            earthImg.alt = 'Sad Earth';
+        const rawName = productInfo.name.toLowerCase();
+        const weightKeys = Object.keys(weightsData).map((k) => k.toLowerCase());
+        const matchedKey = weightKeys.find((key) => rawName.includes(key));
+        const finalKey = matchedKey
+          ? Object.keys(weightsData).find((k) => k.toLowerCase() === matchedKey)
+          : null;
+        const true_weight = weightsData[finalKey || ""] || 0.5;
+
+        const productData = {
+          name: productInfo.name,
+          weight: true_weight,
+          brand: brand,
+        };
+        const carbonFootprint = await calculateCarbonFootprint(productData);
+        const brandLink = `https://${brand}/`;
+        const stats = ratingsData[brandLink];
+        console.log("Brand stats:", stats);
+        // Update widget
+        if (sustainabilityWidget) {
+          const earthImg = sustainabilityWidget.querySelector(
+            ".eco-earth-img",
+          ) as HTMLImageElement;
+          const carbonValue = sustainabilityWidget.querySelector(
+            ".eco-carbon-value",
+          ) as HTMLDivElement;
+          if (carbonValue) carbonValue.textContent = carbonFootprint.toFixed(2);
+          if (earthImg) {
+            const happyEarth = chrome.runtime.getURL("happy_earth.png");
+            const sadEarth = chrome.runtime.getURL("sad_earth.png");
+            if (stats?.overall >= 4) {
+              earthImg.src = happyEarth;
+              earthImg.alt = "Happy Earth";
+            } else {
+              earthImg.src = sadEarth;
+              earthImg.alt = "Sad Earth";
+            }
           }
         }
+      } catch (error) {
+        console.error("Error fetching weights.json:", error);
+        throw error;
       }
     } catch (error) {
-      console.error('Error fetching weights.json:', error);
-      throw error;
+      console.error("Error loading sustainability data:", error);
     }
-  } catch (error) {
-    console.error('Error loading sustainability data:', error);
   }
-}
 
-function extractProductInfo(): ProductInfo | null {
-  try {
-    // Find the product container
-    const productContainer = document.querySelector('[class*=product][class*=name], [class*=product][class*=title], [id*=product][id*=name], [id*=product][id*=title], [data-auto-id*=product][data-auto-id*=title], [data-auto-id*=product][data-auto-id*=name]');
-    console.log('Found product container:', productContainer);
-    
-    if (!productContainer) {
-      console.error('Could not find product container');
+  function extractProductInfo(): ProductInfo | null {
+    try {
+      // Find the product container
+      const productContainer = document.querySelector(
+        "[class*=product][class*=name], [class*=product][class*=title], [id*=product][id*=name], [id*=product][id*=title], [data-auto-id*=product][data-auto-id*=title], [data-auto-id*=product][data-auto-id*=name]",
+      );
+      console.log("Found product container:", productContainer);
+
+      if (!productContainer) {
+        console.error("Could not find product container");
+        return null;
+      }
+
+      // Extract product information
+      const titleElement = document.querySelector(
+        "[class*=product][class*=name], [class*=product][class*=title], [id*=product][id*=name], [id*=product][id*=title], [data-auto-id*=product][data-auto-id*=title], [data-auto-id*=product][data-auto-id*=name]",
+      );
+      const priceElement = productContainer.querySelector(
+        '[class*="price"], .price',
+      );
+      const imageElement = productContainer.querySelector("img");
+
+      const apiKey = import.meta.env.VITE_API_KEY;
+      // console.log("Found elements:", {
+      //   title: titleElement,
+      //   price: priceElement?.textContent,
+      //   image: imageElement?.src,
+      // });
+
+      const rawName =
+        titleElement?.textContent?.trim().toLowerCase() || "Unknown Product";
+      const productPrice = priceElement?.textContent?.trim() || "";
+      const productImage = imageElement?.src || "";
+      const productUrl = window.location.href;
+
+      // Extract brand from URL
+      const hostname = new URL(productUrl).hostname;
+      const parts = hostname.split(".").filter(Boolean);
+      const productBrand =
+        parts.length >= 2 ? parts[parts.length - 2] : hostname;
+
+      console.log("Extracted brand from URL:", productBrand);
+
+      return {
+        name: rawName,
+        price: productPrice,
+        image: productImage,
+        url: productUrl,
+        brand: productBrand,
+      };
+    } catch (error) {
+      console.error("Error extracting product info:", error);
       return null;
     }
+  }
 
-    // Extract product information
-    const titleElement = productContainer.querySelector('[class*=product][class*=name], [class*=product][class*=title], [id*=product][id*=name], [id*=product][id*=title], [data-auto-id*=product][data-auto-id*=title], [data-auto-id*=product][data-auto-id*=name]');
-    const priceElement = productContainer.querySelector('[class*="price"], .price');
-    const imageElement = productContainer.querySelector('img');
+  function sendToOpenAI(prompt: string): void {
+    // Retrieve API key from environment variable or configuration
+    const apikey = import.meta.env.VITE_API_KEY;
+    fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apikey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4",
+        messages: [
+          { role: "system", content: "You are a sustainability analyst." },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.7,
+      }),
+    })
+      .then((res: Response) => res.json())
+      .then((data: any) => {
+        const reply = data.choices?.[0]?.message?.content;
+        console.log("🌍 OpenAI response:", reply);
+        renderPopupTable(reply || "No data returned");
+      })
+      .catch((err: unknown) => console.error("❌ OpenAI Error:", err));
+  }
 
-    const apiKey = import.meta.env.VITE_API_KEY;
-    console.log('Found elements:', {
-      title: titleElement,
-      price: priceElement?.textContent,
-      image: imageElement?.src
-    });
+  let currentPopup: HTMLElement | null = null;
 
-    const rawName = titleElement?.textContent?.trim().toLowerCase() || 'Unknown Product';
-    const productPrice = priceElement?.textContent?.trim() || '';
-    const productImage = imageElement?.src || '';
-    const productUrl = window.location.href;
+  function togglePopup(): void {
+    // If popup is open, remove it
+    if (currentPopup) {
+      currentPopup.remove();
+      currentPopup = null;
+      return;
+    }
 
-    // Extract brand from URL
-    const hostname = new URL(productUrl).hostname;
-    const parts = hostname.split('.').filter(Boolean);
-    const productBrand = parts.length >= 2 ? parts[parts.length - 2] : hostname;
+    // Create popup container
+    const popup = document.createElement("div");
+    popup.className = "eco-popup";
+    popup.id = "eco-popup";
+    popup.style.position = "fixed";
+    popup.style.bottom = "110px";
+    popup.style.right = "32px";
+    popup.style.zIndex = "10000";
+    popup.style.background = "#fff";
+    popup.style.border = "1px solid #ddd";
+    popup.style.borderRadius = "12px";
+    popup.style.boxShadow = "0 4px 16px rgba(0,0,0,0.15)";
+    popup.style.padding = "24px 20px 20px 20px";
+    popup.style.minWidth = "320px";
+    popup.style.maxWidth = "400px";
+    popup.style.fontFamily = "inherit";
 
-    console.log('Extracted brand from URL:', productBrand);
-
-    return {
-      name: rawName,
-      price: productPrice,
-      image: productImage,
-      url: productUrl,
-      brand: productBrand
+    const closeBtn = document.createElement("button");
+    closeBtn.textContent = "×";
+    closeBtn.style.position = "absolute";
+    closeBtn.style.top = "8px";
+    closeBtn.style.right = "12px";
+    closeBtn.style.background = "none";
+    closeBtn.style.border = "none";
+    closeBtn.style.fontSize = "1.5rem";
+    closeBtn.style.cursor = "pointer";
+    closeBtn.onclick = () => {
+      popup.remove();
+      currentPopup = null;
     };
-  } catch (error) {
-    console.error('Error extracting product info:', error);
-    return null;
-  }
-}
+    popup.appendChild(closeBtn);
 
-function removeSustainabilityTracker(): void {
-  if (sustainabilityWidget) {
-    sustainabilityWidget.remove();
-    sustainabilityWidget = null;
-  }
-}
+    const placeholder = document.createElement("div");
+    placeholder.id = "eco-popup-content";
+    placeholder.innerHTML = "<em>Loading sustainability analysis...</em>";
+    popup.appendChild(placeholder);
 
-function sendToOpenAI(prompt: string): void {
-  // Retrieve API key from environment variable or configuration
-  const apikey = import.meta.env.VITE_API_KEY;
-  fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apikey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: "gpt-4",
-      messages: [
-        { role: "system", content: "You are a sustainability analyst." },
-        { role: "user", content: prompt }
-      ],
-      temperature: 0.7
-    })
-  })
-    .then((res: Response) => res.json())
-    .then((data: any) => {
-      const reply = data.choices?.[0]?.message?.content;
-      console.log("🌍 OpenAI response:", reply);
-      renderPopupTable(reply || "No data returned");
-    })
-    .catch((err: unknown) => console.error("❌ OpenAI Error:", err));
-}
+    document.body.appendChild(popup);
+    currentPopup = popup;
 
-let currentPopup: HTMLElement | null = null;
+    const productInfo = extractProductInfo();
+    if (!productInfo) {
+      placeholder.innerHTML = "❌ Could not extract product info.";
+      return;
+    }
 
-function togglePopup(): void {
-  // If popup is open, remove it
-  if (currentPopup) {
-    currentPopup.remove();
-    currentPopup = null;
-    return;
-  }
-
-  // Create popup container
-  const popup = document.createElement('div');
-  popup.className = 'eco-popup';
-  popup.id = 'eco-popup';
-  popup.style.position = 'fixed';
-  popup.style.bottom = '110px';
-  popup.style.right = '32px';
-  popup.style.zIndex = '10000';
-  popup.style.background = '#fff';
-  popup.style.border = '1px solid #ddd';
-  popup.style.borderRadius = '12px';
-  popup.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)';
-  popup.style.padding = '24px 20px 20px 20px';
-  popup.style.minWidth = '320px';
-  popup.style.maxWidth = '400px';
-  popup.style.fontFamily = 'inherit';
-
-  const closeBtn = document.createElement('button');
-  closeBtn.textContent = '×';
-  closeBtn.style.position = 'absolute';
-  closeBtn.style.top = '8px';
-  closeBtn.style.right = '12px';
-  closeBtn.style.background = 'none';
-  closeBtn.style.border = 'none';
-  closeBtn.style.fontSize = '1.5rem';
-  closeBtn.style.cursor = 'pointer';
-  closeBtn.onclick = () => {
-    popup.remove();
-    currentPopup = null;
-  };
-  popup.appendChild(closeBtn);
-
-  const placeholder = document.createElement('div');
-  placeholder.id = 'eco-popup-content';
-  placeholder.innerHTML = '<em>Loading sustainability analysis...</em>';
-  popup.appendChild(placeholder);
-
-  document.body.appendChild(popup);
-  currentPopup = popup;
-
-  const productInfo = extractProductInfo();
-  if (!productInfo) {
-    placeholder.innerHTML = '❌ Could not extract product info.';
-    return;
-  }
-
-  const prompt = `Using only the information found at this URL: ${productInfo.url}, extract the product name, brand, and material. Then, evaluate the product's sustainability in four categories:
+    const prompt = `Using only the information found at this URL: ${productInfo.url}, extract the product name, brand, and material. Then, evaluate the product's sustainability in four categories:
 
 Material (e.g. natural, recycled, toxic, biodegradable)
 
@@ -318,10 +375,9 @@ Durability (e.g. long-lasting, disposable, wear resistance)
 End-of-life (e.g. recyclable, compostable, landfill)
 
 make sure each section has less than 16 words`;
- console.log("🌍 Sending prompt to OpenAI:", prompt);
-  sendToOpenAI(prompt);
-}
-
+    console.log("🌍 Sending prompt to OpenAI:", prompt);
+    sendToOpenAI(prompt);
+  }
 }
 function renderPopupTable(response: string): void {
   const container = document.getElementById("eco-popup-content");
@@ -408,7 +464,7 @@ function renderPopupTable(response: string): void {
     { label: "Material", icon: "♻️" },
     { label: "Production", icon: "🏭" },
     { label: "Durability", icon: "🧱" },
-    { label: "End-of-life", icon: "🪦" }
+    { label: "End-of-life", icon: "🪦" },
   ];
 
   categories.forEach(({ label, icon }) => {
@@ -426,7 +482,7 @@ function renderPopupTable(response: string): void {
     cell.addEventListener("click", () => {
       // Collapse all quadrants
       const all = grid.querySelectorAll(".eco-quadrant");
-      all.forEach(q => {
+      all.forEach((q) => {
         if (q !== cell) (q as HTMLElement).style.display = "none";
       });
       cell.classList.add("eco-expanded");
@@ -445,9 +501,4 @@ function renderPopupTable(response: string): void {
   });
 
   container.appendChild(grid);
-}
-
-
-function removeSustainabilityTracker() {
-  throw new Error('Function not implemented.');
 }
