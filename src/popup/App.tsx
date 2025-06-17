@@ -30,6 +30,9 @@ function App() {
   const [brandUrl, setBrandUrl] = useState<string>("unknown");
   const [showAlternatives, setShowAlternatives] = useState(false);
 
+  const apiKey = import.meta.env.VITE_API_KEY;
+  console.log(apiKey)
+
   useEffect(() => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const url = tabs[0]?.url;
